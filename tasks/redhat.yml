@@ -69,44 +69,21 @@
       name: "{{ posgis_to_install }}"
       state: latest
     ignore_errors: yes
-  when: installpostgis
+  when:
+    - installpostgis
+    - ansible_distribution != "RedHat"
 
 - name: "Enable init.d script for {{ postgresql_version }}"
   shell: "chkconfig --level 2345 postgresql-{{ postgresql_version }} on"
   when:
     - ansible_os_family == "RedHat"
-    - ansible_facts['distribution_major_version'] == "7"
+    - ansible_distribution_major_version == "7"
 
 - name: create database
   command: "/usr/pgsql-{{ postgresql_version }}/bin/postgresql{{__postgresql_command_sep }}{{ __postgresql_version_dotless }}-setup initdb
           creates=/var/lib/pgsql/{{ postgresql_version }}/data/postgresql.conf"
   become: true
-#- block:
-#  - name: add new configuration to "postgresql.conf"
-#    blockinfile:
-#      dest: /var/lib/pgsql/"{{ postgresql_version }}"/data/postgresql.conf
-#      block: |
-#        include 'server.conf'
 
-#  - name: add new configuration to "server.conf"
-#    blockinfile:
-#      create: yes
-#      dest: "/var/lib/pgsql/{{ postgresql_version }}/data/server.conf"
-#      block: |
-#        listen_addresses = '*'
-
-#  - name: disable access by ident
-#    lineinfile:
-#      path: "/var/lib/pgsql/{{ postgresql_version }}/data/pg_hba.conf"
-#      regexp: '^host    all             all             127.0.0.1/32            ident(.*)$'
-#      line: '#host    all             all             127.0.0.1/32            ident'
-
-#  - name: add new configuration to "pg_hba.conf"
-#    blockinfile:
-#      dest: "/var/lib/pgsql/{{ postgresql_version }}/data/pg_hba.conf"
-#      block: |
-#        host    all             all             0.0.0.0/0                md5
-#  when: postgresql_listen_on_all_ip
 
 - name: update environment variables in UNIX account postgres
   blockinfile:
