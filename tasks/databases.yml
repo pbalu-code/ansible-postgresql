@@ -1,0 +1,14 @@
+---
+- name: Ensure database is created
+  become: true
+  become_user: postgres
+  postgresql_db: name={{ item.name }}
+         encoding='{{ item.encoding }}'
+         lc_collate='{{ item.locale }}'
+         lc_ctype='{{ item.locale }}'
+         template='template0'
+         state=present
+  with_items: "{{ postgresql_dbs }}"
+  no_log: true
+
+

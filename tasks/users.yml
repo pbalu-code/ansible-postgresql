@@ -1,0 +1,20 @@
+---
+- name: Ensure user has got access to the database
+  become: true
+  become_user: postgres
+  postgresql_user: db={{ item.name }}
+         name={{ item.user }}
+         password={{ item.password }}
+         priv=ALL
+         state=present
+  with_items: "{{ postgresql_dbs }}"
+  no_log: true
+
+- name: Ensure user has not got unnecessary privileges
+  become: true
+  become_user: postgres
+  postgresql_user: name={{ item.user }}
+           role_attr_flags=NOSUPERUSER,NOCREATEDB
+           state=present
+  with_items: "{{ postgresql_dbs }}"
+  no_log: true

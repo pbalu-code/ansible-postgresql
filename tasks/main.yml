@@ -1,0 +1,18 @@
+---
+#- name: Include distribution dependent variables
+#  include_vars: "{{ item }}"
+#  with_first_found:
+#    - "{{ ansible_distribution }}.yml"
+#    - "{{ ansible_os_family }}.yml"
+#  tags: postgres
+- include_tasks: redhat.yml
+  when:
+    - ansible_os_family == "RedHat"
+
+- include_tasks: ubuntu.yml
+  when:
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- include_tasks: databases.yml
+- include_tasks: users.yml
+- include_tasks: config.yml

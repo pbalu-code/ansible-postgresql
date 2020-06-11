@@ -1,0 +1,125 @@
+---
+#- name: Ensure set LANGS
+#  shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' LC_MEASUREMENT='{{ locale }}' LC_IDENTIFICATION='{{ locale }}'"
+
+#- name: Reinstall glibc (Hun support)
+#  command: "yum reinstall -y glibc-common"
+
+- name: Disable dnf postgresql module
+  shell:
+    cmd: dnf -qy module disable postgresql
+  args:
+    warn: no
+  when: ansible_facts['distribution_major_version'] == "8"
+
+
+- name: install repo for PostgreSQL
+  yum:
+    name: "https://download.postgresql.org/pub/repos/yum/{{ postgresql_version }}/redhat/rhel-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+    state: present
+  when:
+    - outgoing_proxy is not defined
+
+- name: Set PostgreSQL dotless version fact
+  set_fact:
+    __postgresql_version_dotless: "{{ postgresql_version | replace('.', '') | replace('-', '') }}"
+    __postgresql_command_sep: "{{ postgresql_version is version('10', '>=') | ternary('-', '') }}"
+
+
+#- name: Disable unwanted repos /1
+#  become: true
+#  command: "yum-config-manager --disable pgdg95"
+#- name: Disable unwanted repos /2
+#  become: true
+#  command: "yum-config-manager --disable pgdg1*"
+
+- name: install python module for Postgres
+  yum:
+    name: "{{ ansible_facts['distribution_major_version'] is version('8', '>=') | ternary('python3-psycopg2', 'python-psycopg2') }}"
+
+
+
+- name: "Install PostgreSQL version {{ postgresql_version }}"
+  yum:
+    name:
+      - "postgresql{{ __postgresql_version_dotless }}-server"
+      - "postgresql{{ __postgresql_version_dotless }}-contrib"
+      - "postgresql{{ __postgresql_version_dotless }}-libs"
+      - "postgresql{{ __postgresql_version_dotless }}"
+      - "pg_repack{{ __postgresql_version_dotless }}"
+    state: latest
+#    disablerepo: 'pgdg*'
+#    enablerepo: pgdg96
+
+- block:
+  - name: Make sure epel repo is installed
+    yum:
+      name: "epel-release"
+      state: present
+
+  - name: Enable PowerTools repo (for PostGIS)
+    shell:
+      cmd: dnf config-manager --set-enabled PowerTools
+    args:
+      warn: no
+    when: ansible_distribution_major_version is version('8', '>=')
+
+  - name: Install PostGIS
+    yum:
+      name: "{{ posgis_to_install }}"
+      state: latest
+    ignore_errors: yes
+  when: installpostgis
+
+- name: "Enable init.d script for {{ postgresql_version }}"
+  shell: "chkconfig --level 2345 postgresql-{{ postgresql_version }} on"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_facts['distribution_major_version'] == "7"
+
+- name: create database
+  command: "/usr/pgsql-{{ postgresql_version }}/bin/postgresql{{__postgresql_command_sep }}{{ __postgresql_version_dotless }}-setup initdb
+          creates=/var/lib/pgsql/{{ postgresql_version }}/data/postgresql.conf"
+  become: true
+#- block:
+#  - name: add new configuration to "postgresql.conf"
+#    blockinfile:
+#      dest: /var/lib/pgsql/"{{ postgresql_version }}"/data/postgresql.conf
+#      block: |
+#        include 'server.conf'
+
+#  - name: add new configuration to "server.conf"
+#    blockinfile:
+#      create: yes
+#      dest: "/var/lib/pgsql/{{ postgresql_version }}/data/server.conf"
+#      block: |
+#        listen_addresses = '*'
+
+#  - name: disable access by ident
+#    lineinfile:
+#      path: "/var/lib/pgsql/{{ postgresql_version }}/data/pg_hba.conf"
+#      regexp: '^host    all             all             127.0.0.1/32            ident(.*)$'
+#      line: '#host    all             all             127.0.0.1/32            ident'
+
+#  - name: add new configuration to "pg_hba.conf"
+#    blockinfile:
+#      dest: "/var/lib/pgsql/{{ postgresql_version }}/data/pg_hba.conf"
+#      block: |
+#        host    all             all             0.0.0.0/0                md5
+#  when: postgresql_listen_on_all_ip
+
+- name: update environment variables in UNIX account postgres
+  blockinfile:
+    create: yes
+    dest: /var/lib/pgsql/.pgsql_profile
+    block: |
+      export PGHOST=/tmp PAGER=less PGDATA=/var/lib/pgsql/{{ postgresql_version }}/data
+  become: true
+
+- name: start postgresql service
+  service:
+    name: "postgresql-{{ postgresql_version }}"
+    state: started
+    enabled: true
+  become: true
+

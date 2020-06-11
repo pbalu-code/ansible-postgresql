@@ -1,0 +1,29 @@
+---
+postgresql_version: 10
+installpostgis: true
+posgis_to_install: postgis24_10
+#libzstd_url: "http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/libzstd-1.4.2-2.el8.x86_64.rpm"
+
+postgresql_pg_hba_conf:
+      - "host all all 10.0.0.0/8 {{ postgresql_network_password_mode }}"
+
+postgresql_network_password_mode: "md5"
+# METHOD can be "trust", "reject", "md5", "password", "scram-sha-256",
+# "gss", "sspi", "ident", "peer", "pam", "ldap", "radius" or "cert".
+# Note that "password" sends passwords in clear text; "md5" or
+# "scram-sha-256" are preferred since they send encrypted passwords.
+
+postgresql_pgdata_default: /var/lib/pgsql/{{ postgresql_version }}/data
+postgresql_conf_dir_default: /var/lib/pgsql/{{ postgresql_version }}/data
+postgresql_service_name: postgresql-{{ postgresql_version }}
+postgresql_user_name: postgres
+postgresql_dbs:
+  - name: database1
+    password: password123
+    user: pguser
+    encoding: UTF-8
+    locale: en_US.UTF-8
+
+locale: en_US.UTF-8
+#zone: Europe/Budapest
+#zoneinfo_path: /usr/share/zoneinfo/Europe/Budapest
