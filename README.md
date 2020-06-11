@@ -40,8 +40,8 @@ Role Variables
 - `postgresql_version`: PostgreSQL version to install. On Debian-based platforms, the default is whatever version is
   pointed to by the `postgresql` metapackage). On RedHat-based platforms, the default is `10`.
 
-_Soon:_
-- _`postgresql_flavor`: On Debian-based platforms, this specifies whether you want to use PostgreSQL packages from pgdg
+
+- ___Soon:___ _`postgresql_flavor`: On Debian-based platforms, this specifies whether you want to use PostgreSQL packages from pgdg
   or the distribution's apt repositories. Possible values: `apt`, `pgdg` (default: `apt`)._ {: .gitlab-purple}
   
 - `postgresql_conf`: A list of hashes (dictionaries) of `postgresql.conf` options (keys) and values. These options are
