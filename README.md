@@ -3,8 +3,8 @@ ansible-postgresql
 Ansible role to install postgresql server on Centos/Redhat 7 - 8 , ( Soon: Ubuntu 18.04 ).
 
 Tested:
-- Redhat7 ( without Postgis due to PowerTools absence )
-- Redhat8 ( without Postgis due to PowerTools absence )
+- Redhat7
+- Redhat8
 - Centos7
 - Centos8 
 
@@ -104,9 +104,8 @@ Role Variables
 
 Note that "password" sends passwords in clear text; "md5" or scram-sha-256" are preferred since they send encrypted passwords.
 
-- `installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option. (Centos only) 
-    under RedHat this function is disabled due to disabled PowerTools repo. The default is `false`
-
+- `installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.
+  
 - `posgis_to_install`: `postgis24_10` Declace which version of postgis to be installed.
 
 - `postgresql_pgdata`: Only set this if you have changed the `$PGDATA` directory from the package default. Note this
