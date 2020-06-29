@@ -40,12 +40,10 @@
     dest: "{{ postgresql_conf_dir }}/pg_hba.conf"
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
-    mode: 0400
+    mode: '0400'
     backup: yes
   notify: Reload PostgreSQL
 
-- include_tasks: backup.yml
-  when: postgresql_backup_dir is defined
 
 # lineinfile's behavior when `backrefs = True` is very odd. We don't want to overwrite include_dirs if it's already
 # properly set, but we don't know the exact format it will be in (with or without '=', with a comment at end of line,
@@ -70,11 +68,6 @@
     backup: yes
   notify: Reload PostgreSQL
   when: "postgresql_version is version_compare('9.3', '>=') and __postgresql_include_dir_result is changed"
-
-
-
-
-
 
 - name: Ensure PostgreSQL is running
   service:
