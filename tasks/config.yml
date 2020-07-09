@@ -16,13 +16,12 @@
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
 
-
 - name: Include ansible_postgresql.conf in postgresql.conf
   lineinfile:
     line: "include = 'conf.d/25ansible_postgresql.conf'"
     dest: "{{ postgresql_conf_dir }}/postgresql.conf"
     backup: yes
-  notify: Reload PostgreSQL
+  notify: Restart PostgreSQL
   when: "postgresql_version is version_compare('9.3', '<')"
 
 - name: Set config options
@@ -32,7 +31,7 @@
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
     backup: yes
-  notify: Reload PostgreSQL
+  notify: Restart PostgreSQL
 
 - name: Install pg_hba.conf
   template:
@@ -42,7 +41,7 @@
     group: "{{ postgresql_user_name }}"
     mode: '0400'
     backup: yes
-  notify: Reload PostgreSQL
+  notify: Restart PostgreSQL
 
 
 # lineinfile's behavior when `backrefs = True` is very odd. We don't want to overwrite include_dirs if it's already
@@ -66,8 +65,42 @@
     line: "include_dir = 'conf.d'"
     path: "{{ postgresql_conf_dir }}/postgresql.conf"
     backup: yes
-  notify: Reload PostgreSQL
+  notify: Restart PostgreSQL
   when: "postgresql_version is version_compare('9.3', '>=') and __postgresql_include_dir_result is changed"
+
+- block:
+  - name: Copy SSL key file
+    copy:
+      remote_src: no
+      src: "{{ pg_ssl_key }}"
+      dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_key }}"
+      owner: "{{ postgresql_user_name }}"
+      group: "{{ postgresql_user_name }}"
+      mode: '0600'
+
+  - name: Copy SSL cert file
+    copy:
+      remote_src: no
+      src: "{{ pg_ssl_cert }}"
+      dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_cert }}"
+      owner: "{{ postgresql_user_name }}"
+      group: "{{ postgresql_user_name }}"
+      mode: '0600'
+
+  - name: Copy CA root cert file
+    copy:
+      remote_src: no
+      src: "{{ pg_ssl_ca }}"
+      dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_ca }}"
+      owner: "{{ postgresql_user_name }}"
+      group: "{{ postgresql_user_name }}"
+      mode: '0600'
+    when:
+      - pg_ssl_ca is defined
+  when: use_ssl
+
+- name: Force all notified handlers to run at this point, not waiting for normal sync points
+  meta: flush_handlers
 
 - name: Ensure PostgreSQL is running
   service:

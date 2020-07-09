@@ -59,6 +59,17 @@ Role Variables
     - max_connections: 250
     - archive_mode: "off"
     - work_mem: "'8MB'"
+    - listen_addresses: "'0.0.0.0'"
+    - password_encryption: scram-sha-256
+    - hot_standby: "on"
+    - ssl: "on"
+    - ssl_ca_file: "'{{ pg_ssl_ca }}'"
+    - ssl_cert_file: "'{{ pg_ssl_cert }}'"
+    - ssl_key_file: "'{{ pg_ssl_key }}'"
+    - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
+    - ssl_prefer_server_ciphers: "on"
+    - ssl_min_protocol_version: 'TLSv1.1'
+    - ssl_max_protocol_version: 'TLSv1.2'
   ```
 
   Becomes the following in `25ansible_postgresql.conf`:
@@ -102,17 +113,71 @@ Role Variables
   - radius
   - cert  
 
-Note that "password" sends passwords in clear text; "md5" or scram-sha-256" are preferred since they send encrypted passwords.
+   Note that "password" sends passwords in clear text; "md5" or scram-sha-256" are preferred since they send encrypted passwords.
 
 - `installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.
   
 - `posgis_to_install`: `postgis24_10` Declace which version of postgis to be installed.
+
+- `use_ssl`: boolean This option is turning on/off managing ssl keys transfer. 
+
+- `pg_ssl_key`: [path/]pgstandby.key
+
+- `pg_ssl_cert`: [path/]pgstandby.crt
+
+- `pg_ssl_ca`: [path/]root.crt
 
 - `postgresql_pgdata`: Only set this if you have changed the `$PGDATA` directory from the package default. Note this
   does not configure PostgreSQL to actually use a different directory, you will need to do that yourself, it just allows
   the role to properly locate the directory.
 
 - `postgresql_conf_dir`: As with `postgresql_pgdata` except for the configuration directory.
+
+- `postgresql_dbs`:  Create databases with these parameters.
+    - `name`: database name
+    - `password`: (optional) User's password to connect the database
+    - `user`: User to connect the current database
+    - `priv`: Slash-separated PostgreSQL privileges string: priv1/priv2, where privileges can be defined for database ( allowed options - 'CREATE', 'CONNECT', 'TEMPORARY', 'TEMP', 'ALL'. For example CONNECT ) or for table ( allowed options - 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'ALL'. For example table:SELECT ). Mixed example of this string: CONNECT/CREATE/table1:SELECT/table2:INSERT.
+    - `ssl_mode`: __Optional__ Determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the server.
+See https://www.postgresql.org/docs/current/static/libpq-ssl.html for more information on the modes.
+Default of prefer matches libpq default.  
+Choices:
+        - allow
+        - disable   
+        - prefer ← (default)
+        - require
+        - verify-ca
+        - verify-full
+    - `encoding`: UTF-8
+    - `locale`: en_US.UTF-8
+
+- `postgresql_global_users`: __Optional__ Create non database specific users with special rights  
+    - `name`: User's login name
+    - `password`: (optional) User's password  
+    - `role_attr_flags`: PostgreSQL user attributes string in the format: CREATEDB,CREATEROLE,SUPERUSER.  Choices:  
+         - [NO]SUPERUSER  
+         - [NO]CREATEROLE
+         - [NO]CREATEDB
+         - [NO]INHERIT
+         - [NO]LOGIN
+         - [NO]REPLICATION
+         - [NO]BYPASSRLS
+    - ssl_mode: __Optional__ see before...
+
+Replication
+---------------
+Tested with PostgreSQL 12
+
+This role is able to create asyncron streaming replication too.
+Access rights and the config should be created by config options like postgresql_conf, postgresql_pg_hba_conf ect.  
+The authentication is trust / IP based.
+
+Replication related variables:
+
+- `pg_standby_slot_name`: string, what should be the name of the replication stream. This is a host related variable. Use it in host variable! 
+- `init_replication`: boolean Sync standby server to the master by pg_basebackup method. __If the standby.signal file is not present.__ 
+- `replication_master`: ip/hostname. Will it use during pg_basebackup
+ 
 
 
 Example Playbook
@@ -167,6 +232,17 @@ postgresql_dbs:
   - name: database1
     password: password123
     user: pguser
+    priv: ALL
+    ssl_mode: prefer
     encoding: UTF-8
     locale: en_US.UTF-8
 ```
+Create global users
+
+```yaml
+postgresql_global_users:
+  - user: "replicator"
+    ssl_mode: require
+    role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,LOGIN,REPLICATION"
+```
+

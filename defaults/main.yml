@@ -1,7 +1,7 @@
 ---
-postgresql_version: 10
-installpostgis: true
-posgis_to_install: postgis24_10
+postgresql_version: 12
+installpostgis: false
+posgis_to_install: postgis25_12
 #libzstd_url: "http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/libzstd-1.4.2-2.el8.x86_64.rpm"
 
 postgresql_pg_hba_conf:
@@ -17,13 +17,17 @@ postgresql_pgdata_default: /var/lib/pgsql/{{ postgresql_version }}/data
 postgresql_conf_dir_default: /var/lib/pgsql/{{ postgresql_version }}/data
 postgresql_service_name: postgresql-{{ postgresql_version }}
 postgresql_user_name: postgres
-postgresql_dbs:
-  - name: database1
-    password: password123
-    user: pguser
-    encoding: UTF-8
-    locale: en_US.UTF-8
+use_ssl: false
+open_firewalld: false
+init_replication: false
 
-locale: en_US.UTF-8
+#postgresql_dbs:
+#  - name: database1
+#    password: password123
+#    user: pguser
+#    encoding: UTF-8
+#    locale: en_US.UTF-8
+
+#locale: en_US.UTF-8
 #zone: Europe/Budapest
 #zoneinfo_path: /usr/share/zoneinfo/Europe/Budapest

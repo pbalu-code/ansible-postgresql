@@ -5,13 +5,53 @@
 #- name: Reinstall glibc (Hun support)
 #  command: "yum reinstall -y glibc-common"
 
-- name: Disable dnf postgresql module
-  shell:
-    cmd: dnf -qy module disable postgresql
-  args:
-    warn: no
-  when: ansible_facts['distribution_major_version'] == "8"
+- block:
+  - name: Make sure epel repo is installed
+    yum:
+      name: "epel-release"
+      state: present
+  - name: Install Code Ready (RedHat)
+    shell:
+      cmd: "subscription-manager repos --enable codeready-builder-for-rhel-{{ ansible_distribution_major_version }}-x86_64-rpms"
+    when: ansible_distribution == "RedHat"
 
+  - name: Enable Powertools (for PostGIS)
+    ini_file:
+      path: /etc/yum.repos.d/CentOS-PowerTools.repo
+      section: PowerTools
+      option: enabled
+      value: "1"
+    when:
+      - ansible_distribution_major_version is version('8', '>=')
+      - ansible_distribution != 'RedHat'
+    register: yum_cache_update
+
+  - name: yum update cache
+    yum:
+      update_cache: yes
+    when: yum_cache_update.changed
+  when:
+    - installpostgis
+#    - ansible_distribution != "RedHat"
+
+- name: Disable original postgresql dnf module
+  blockinfile:
+    path: /etc/dnf/modules.d/postgresql.module
+    create: yes
+    block : |
+      [postgresql]
+      name=postgresql
+      profiles=
+      state=disabled
+      stream=
+  when:
+    - ansible_facts['distribution_major_version'] == "8"
+  register: dnf_pgsql
+
+- name: dnf cache update
+  dnf:
+    update_cache: yes
+  when: dnf_pgsql.changed
 
 - name: install repo for PostgreSQL
   yum:
@@ -26,18 +66,10 @@
     __postgresql_command_sep: "{{ postgresql_version is version('10', '>=') | ternary('-', '') }}"
 
 
-#- name: Disable unwanted repos /1
-#  become: true
-#  command: "yum-config-manager --disable pgdg95"
-#- name: Disable unwanted repos /2
-#  become: true
-#  command: "yum-config-manager --disable pgdg1*"
-
 - name: install python module for Postgres
   yum:
     name: "{{ ansible_facts['distribution_major_version'] is version('8', '>=') | ternary('python3-psycopg2', 'python-psycopg2') }}"
-
-
+    state: present
 
 - name: "Install PostgreSQL version {{ postgresql_version }}"
   yum:
@@ -47,37 +79,14 @@
       - "postgresql{{ __postgresql_version_dotless }}-libs"
       - "postgresql{{ __postgresql_version_dotless }}"
       - "pg_repack{{ __postgresql_version_dotless }}"
-    state: latest
-#    disablerepo: 'pgdg*'
-#    enablerepo: pgdg96
+    state: present
 
-- block:
-  - name: Make sure epel repo is installed
-    yum:
-      name: "epel-release"
-      state: present
-  - name: Install Code Ready (RedHat)
-    shell:
-      cmd: "subscription-manager repos --enable codeready-builder-for-rhel-{{ ansible_distribution_major_version }}-x86_64-rpms"
-    when: ansible_distribution == "RedHat"
-
-  - name: Enable PowerTools repo (for PostGIS)
-    shell:
-      cmd: "dnf config-manager --set-enabled PowerTools"
-    args:
-      warn: no
-    when:
-      - ansible_distribution_major_version is version('8', '>=')
-      - ansible_distribution != 'RedHat'
-
-  - name: Install PostGIS
-    yum:
-      name: "{{ posgis_to_install }}"
-      state: latest
-    ignore_errors: yes
+- name: Install PostGIS
+  yum:
+    name: "{{ posgis_to_install }}"
+    state: present
   when:
     - installpostgis
-#    - ansible_distribution != "RedHat"
 
 - name: "Enable init.d script for {{ postgresql_version }}"
   shell: "chkconfig --level 2345 postgresql-{{ postgresql_version }} on"
@@ -85,10 +94,17 @@
     - ansible_os_family == "RedHat"
     - ansible_distribution_major_version == "7"
 
-- name: create database
+- name: Check DB init state
+  stat:
+    path: /var/lib/pgsql/{{ postgresql_version }}/data/pg_tblspc
+  register: dbinit
+
+- name: Create database
   command: "/usr/pgsql-{{ postgresql_version }}/bin/postgresql{{__postgresql_command_sep }}{{ __postgresql_version_dotless }}-setup initdb
           creates=/var/lib/pgsql/{{ postgresql_version }}/data/postgresql.conf"
   become: true
+  #become_user: "{{ postgresql_user_name }}"
+  when: not dbinit.stat.exists
 
 
 - name: update environment variables in UNIX account postgres
@@ -97,6 +113,8 @@
     dest: /var/lib/pgsql/.pgsql_profile
     block: |
       export PGHOST=/tmp PAGER=less PGDATA=/var/lib/pgsql/{{ postgresql_version }}/data
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
   become: true
 
 - name: start postgresql service
@@ -106,3 +124,20 @@
     enabled: true
   become: true
 
+- name: Gather the rpm package facts
+  package_facts:
+    manager: auto
+  when: open_firewalld
+
+- name: Populate service facts
+  service_facts:
+
+- name: Firewalld Open PostgreSQL ports
+  firewalld:
+    service: postgresql
+    permanent: yes
+    immediate: yes
+    state: enabled
+  when:
+    - open_firewalld
+    - ansible_facts.services['firewalld.service'].state == "running"

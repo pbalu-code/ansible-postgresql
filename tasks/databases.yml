@@ -2,13 +2,22 @@
 - name: Ensure database is created
   become: true
   become_user: postgres
-  postgresql_db: name={{ item.name }}
-         encoding='{{ item.encoding }}'
-         lc_collate='{{ item.locale }}'
-         lc_ctype='{{ item.locale }}'
-         template='template0'
-         state=present
-  with_items: "{{ postgresql_dbs }}"
+  postgresql_db:
+    name: "{{ item.name }}"
+    encoding: '{{ item.encoding }}'
+    lc_collate: '{{ item.locale }}'
+    lc_ctype: '{{ item.locale }}'
+    template: 'template0'
+    state: present
+  loop: "{{ postgresql_dbs }}"
+  when:
+    - postgresql_dbs is defined
+    - not init_replication
   no_log: true
+  notify: Reload PostgreSQL
+
+- name: Force all notified handlers to run at this point, not waiting for normal sync points
+  meta: flush_handlers
+#  ignore_errors: "{{ init_replication | default(omit) }}"
 
 

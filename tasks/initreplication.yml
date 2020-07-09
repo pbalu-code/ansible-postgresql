@@ -1,0 +1,21 @@
+---
+- name: Stop standby PostgreSQL
+  service:
+    name: "{{ postgresql_service_name }}"
+    state: stopped
+
+- name: Empty PSQL data folder
+  file:
+    path: "{{ postgresql_pgdata_default }}/"
+    state: absent
+
+- name: Make pg_basebackup
+  become_user: "{{ postgresql_user_name }}"
+  shell: "pg_basebackup -h {{ replication_master }} -D {{ postgresql_pgdata_default }} -U replicator -P -w -v  -R -X stream -C -S {{ pg_standby_slot_name }}"
+  register: basebackup
+
+- debug:
+    var: basebackup.stdout
+
+# for redo conf at standy
+- include_tasks: config.yml

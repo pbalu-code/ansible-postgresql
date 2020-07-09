@@ -13,6 +13,18 @@
   when:
     - ansible_distribution == "Ubuntu"
 
+- include_tasks: config.yml
 - include_tasks: databases.yml
 - include_tasks: users.yml
-- include_tasks: config.yml
+
+- name: Check is replication necessary
+  stat:
+    path: "{{ postgresql_pgdata }}/standby.signal"
+  register: standby_signal
+
+- include_tasks: initreplication.yml
+  when:
+    - init_replication
+    - not standby_signal.stat.exists
+
+
