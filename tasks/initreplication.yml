@@ -5,17 +5,20 @@
     state: stopped
 
 - name: Empty PSQL data folder
-  file:
-    path: "{{ postgresql_pgdata_default }}/"
-    state: absent
+  shell: "rm -rf {{ postgresql_pgdata_default }}/*"
 
 - name: Make pg_basebackup
   become_user: "{{ postgresql_user_name }}"
   shell: "pg_basebackup -h {{ replication_master }} -D {{ postgresql_pgdata_default }} -U replicator -P -w -v  -R -X stream -C -S {{ pg_standby_slot_name }}"
-  register: basebackup
-
-- debug:
-    var: basebackup.stdout
 
 # for redo conf at standy
 - include_tasks: config.yml
+
+- name: Check is replication is OK
+  stat:
+    path: "{{ postgresql_pgdata }}/standby.signal"
+  register: standby_signal_ok
+
+- debug:
+    msg: "The HOT Standby asyncron replication is ready to use."
+  when: standby_signal_ok.stat.exists

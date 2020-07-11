@@ -18,7 +18,7 @@ postgresql_conf_dir_default: /var/lib/pgsql/{{ postgresql_version }}/data
 postgresql_service_name: postgresql-{{ postgresql_version }}
 postgresql_user_name: postgres
 use_ssl: false
-open_firewalld: false
+open_firewalld: true
 init_replication: false
 
 #postgresql_dbs:
