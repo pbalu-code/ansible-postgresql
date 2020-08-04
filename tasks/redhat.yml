@@ -107,7 +107,6 @@
   #become_user: "{{ postgresql_user_name }}"
   when: not dbinit.stat.exists
 
-
 - name: update environment variables in UNIX account postgres
   blockinfile:
     create: yes
@@ -116,6 +115,7 @@
       export PGHOST=/tmp PAGER=less PGDATA=/var/lib/pgsql/{{ postgresql_version }}/data
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
+    marker: "#{mark} ANSIBLE MANAGED BLOCK General"
   become: true
 
 - name: start postgresql service

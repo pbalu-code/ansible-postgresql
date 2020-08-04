@@ -8,7 +8,15 @@ Tested:
 - Centos7
 - Centos8 
 
+Extra features
+--------------
+ - ssl
+ - pg_rman
+ - pg_audit
+ - replication
 
+About
+--------
 An [Ansible][ansible] role for installing and managing [PostgreSQL][postgresql] servers. This role works with both
 Debian and RedHat based systems.
 
@@ -115,9 +123,9 @@ Role Variables
 
    Note that "password" sends passwords in clear text; "md5" or scram-sha-256" are preferred since they send encrypted passwords.
 
-- `installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.
-  
-- `posgis_to_install`: `postgis24_10` Declace which version of postgis to be installed.
+- `installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.  
+
+- `posgis_to_install`: `postgis25_12` Declare which version of postgis to be installed.  
 
 - `use_ssl`: boolean This option is turning on/off managing ssl keys transfer. 
 
@@ -164,6 +172,7 @@ Choices:
          - [NO]BYPASSRLS
     - ssl_mode: __Optional__ see before...
 
+
 Replication
 ---------------
 Tested with PostgreSQL 12
@@ -178,6 +187,24 @@ Replication related variables:
 - `init_replication`: boolean Sync standby server to the master by pg_basebackup method. __If the standby.signal file is not present.__ 
 - `replication_master`: ip/hostname. Will it use during pg_basebackup
  
+pg_rman
+----------------
+_https://github.com/ossc-db/pg_rman_
+
+Variables:
+ - `install_pg_rman`: `False/True` Turn on pg_rman installation (RPM source, Centos / Rhel 7-8 only)
+ - `pg_rman_backup_folder`: `/var/lib/pgsql/12/backups` Where will backups saved.
+ - `pg_rman_install_from_source`: `True/False` pg_rman is available in rpm and in source from github. `False: rpm will be installed.`, `True: The source will be cloned from the github and compiled.` In this case, all necessary devel packages git, make, zlib, ect. will be installed too.
+ - `pg_rman_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/26ansible_pg_rman.conf` 
+ - `pg_rman_ini`: `{dict}`  Configuration parameters for pg_rman.ini "- {option: COMPRESS_DATA, value: true}"
+
+pg_audit
+----------------
+_https://www.pgaudit.org/_
+
+Variables:
+ - `install_pg_audit`: `True/False`
+ - `pg_audit_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/28ansible_pg_audit.conf` 
 
 
 Example Playbook
@@ -187,18 +214,16 @@ Standard install: Default `postgresql.conf`, `pg_hba.conf` and default version f
 
 ```yaml
 ---
-
 - hosts: dbservers
   remote_user: root
   roles:
-    - postgresql
+    - ansible-postgresql
 ```
 
-Use the pgdg packages on a Debian-based host:
+Use the pgdg packages on a Debian-based host (Not yet):
 
 ```yaml
 ---
-
 - hosts: dbservers
   remote_user: root
   vars:
@@ -211,14 +236,34 @@ Use the PostgreSQL 9.6 packages and set some `postgresql.conf` options and `pg_h
 
 ```yaml
 ---
-
 - hosts: dbservers
   remote_user: root
   vars:
-    postgresql_version: 9.6
+    postgresql_version: 12
+    use_ssl: true
+    pg_ssl_key: pgmaster.key
+    pg_ssl_cert: pgmaster.crt
+    pg_ssl_ca: root.crt
     postgresql_conf:
-      - listen_addresses: "''"    # disable network listening (listen on unix socket only)
-      - max_connections: 50       # decrease connection limit
+      - listen_addresses: "'0.0.0.0'"
+      - max_connections: 200       # decrease connection limit
+      - password_encryption: scram-sha-256
+      - max_wal_senders: 5         #Replication specific parameters
+      - max_replication_slots: 5
+      - ssl: "on"
+      - ssl_ca_file: "'{{ pg_ssl_ca }}'"
+      - ssl_cert_file: "'{{ pg_ssl_cert }}'"
+      - ssl_key_file: "'{{ pg_ssl_key }}'"
+      - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
+      - ssl_prefer_server_ciphers: "on"
+      - ssl_min_protocol_version: 'TLSv1.1'
+      - ssl_max_protocol_version: 'TLSv1.2'
+      - log_destination: "'syslog'"
+      - log_filename: "'postgresql-%a.log'"
+      - syslog_facility: "'LOCAL0'"
+      - syslog_ident: "'postgres'"
+      - syslog_sequence_numbers: on
+      - syslog_split_messages: on
     postgresql_pg_hba_conf:
       - host     all    all    0.0.0.0/0    md5
   roles:
@@ -246,3 +291,21 @@ postgresql_global_users:
     role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,LOGIN,REPLICATION"
 ```
 
+pg_rman config
+
+```yaml
+pg_rman_postgres_conf:
+  - wal_init_zero: on
+  - wal_level: replica
+  - archive_mode: on
+  - archive_command: "'test ! -f /var/lib/pgsql/{{ postgresql_version }}/arclog/%f && cp %p /var/lib/pgsql/{{ postgresql_version }}/arclog/%f'"
+
+```
+
+pg_audit
+
+```yaml
+pg_audit_postgres_conf:
+  - pgaudit.log: "'role, misc_set'"
+  - pgaudit.log_level: "'error'"
+```

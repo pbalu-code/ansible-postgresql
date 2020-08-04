@@ -1,0 +1,119 @@
+---
+- name: Check pg_rman status
+  stat:
+    path: "/usr/pgsql-{{ __postgresql_version_dotless }}/bin/pg_rman"
+  register: pg_rman_bin
+
+- name: Set Postgres config options pg_rman
+  template:
+    src: ansible_pg_rman.conf.j2
+    dest: "{{ postgresql_conf_dir }}/conf.d/26ansible_pg_rman.conf"
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+    backup: yes
+  when: pg_rman_postgres_conf is defined
+  notify: Restart PostgreSQL
+
+- block:
+  - name: Download pg_rman rpm
+    get_url:
+      url: "https://github.com{{ lookup('url', 'https://github.com/ossc-db/pg_rman/releases', split_lines=False) | regex_search('/ossc-db/pg_rman/releases/download/V.*?/pg_rman-.*?\\.pg' + __postgresql_version_dotless | string + '\\.rhel' + ansible_distribution_major_version | string + '\\.x86_64\\.rpm') }}"
+      dest: /tmp/
+    register: pg_rman_rpm
+
+  - name: Install pg_rman
+    dnf:
+      name: "{{ pg_rman_rpm.dest }}"
+  when:
+    - not pg_rman_bin.stat.exists
+    - not pg_rman_install_from_source
+- block:
+  - name: Install requirement for compile
+    package:
+      name:
+        - postgresql{{ postgresql_version }}-devel
+        - make
+        - git
+        - redhat-rpm-config
+        - zlib-devel
+        - libselinux-devel
+        - pam-devel
+        - openssl-devel
+        #- crypto-devel
+        #- gssapi_krb5-devel
+        - readline-devel
+      state: present
+
+  - name: Add pgdg bin to path
+    lineinfile:
+      dest: /etc/environment
+      state: present
+      line: "PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pgsql-{{ postgresql_version }}/bin"
+
+  - name: Get pg_rman source
+    git:
+      repo: "{{ pg_rman_git_repo }}"
+      version: "REL{{ postgresql_version is version('10', '>=') | ternary('_', '') }}{{ postgresql_version | replace('.', '_') }}_STABLE"
+      dest: /tmp/pg_rman
+
+  - name: Compile pg_rman stage1
+    make:
+      chdir: /tmp/pg_rman
+
+  - name: Compile pg_rman stage2
+    make:
+      chdir: /tmp/pg_rman
+      target: install
+
+  - name: Remove pg_rman source
+    file:
+      path: /tmp/pg_rman
+      state: absent
+
+  when:
+    - not pg_rman_bin.stat.exists
+    - pg_rman_install_from_source
+
+- name: ARCLOG_PATH folder
+  file:
+    path: "/var/lib/pgsql/{{ postgresql_version }}/arclog"
+    state: directory
+    owner: "{{ postgresql_user_name }}"
+    mode: '0700'
+    setype: postgresql_db_t
+    serole: object_r
+    seuser: system_u
+
+
+- name: update environment variables in UNIX account postgres (pg_rman)
+  blockinfile:
+    create: yes
+    dest: /var/lib/pgsql/.pgsql_profile
+    block: |
+      export BACKUP_PATH={{ pg_rman_backup_folder }}
+      export PATH=$PATH:/usr/pgsql-{{ postgresql_version }}/bin
+      export PGDATA=/var/lib/pgsql/{{ postgresql_version }}/data
+      export ARCLOG_PATH=/var/lib/pgsql/{{ postgresql_version }}/arclog
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+    marker: "#{mark} ANSIBLE MANAGED BLOCK pg_rman"
+
+- name: Check pg_rman init
+  stat:
+    path: "{{ pg_rman_backup_folder }}/pg_rman.ini"
+  register: pg_rman_init
+
+- name: Init pg_rman
+  shell: "/usr/pgsql-{{ postgresql_version }}/bin/pg_rman init -B {{ pg_rman_backup_folder }} -D /var/lib/pgsql/{{ postgresql_version }}/data"
+  become_user: "{{ postgresql_user_name }}"
+  when: not pg_rman_init.stat.exists
+
+- name: pg_rman ini parameters
+  ini_file:
+    path: "{{ pg_rman_backup_folder }}/pg_rman.ini"
+    section:
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  loop: "{{ pg_rman_ini }}"
+  when: pg_rman_ini is defined
+#

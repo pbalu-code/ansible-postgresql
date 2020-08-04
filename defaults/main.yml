@@ -2,6 +2,15 @@
 postgresql_version: 12
 installpostgis: false
 posgis_to_install: postgis25_12
+install_pg_rman: false
+pg_rman_backup_folder: "/var/lib/pgsql/{{ postgresql_version }}/backups"
+pg_rman_install_from_source: true
+pg_rman_git_repo: https://github.com/ossc-db/pg_rman.git
+pg_rman_ini:
+      - option: COMPRESS_DATA
+        value: true
+
+install_pg_audit: false
 #libzstd_url: "http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/libzstd-1.4.2-2.el8.x86_64.rpm"
 
 postgresql_pg_hba_conf:
@@ -20,6 +29,9 @@ postgresql_user_name: postgres
 use_ssl: false
 open_firewalld: true
 init_replication: false
+
+pgrman_source_git: https://github.com/ossc-db/pg_rman.git
+
 
 #postgresql_dbs:
 #  - name: database1

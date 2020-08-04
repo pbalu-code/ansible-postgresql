@@ -1,0 +1,15 @@
+---
+- name: Install pg_audit
+  package:
+    name:
+      - "pgauditlogtofile-{{ postgresql_version | replace('.', '') }}"
+
+- name: Set Postgres config options pg_audit
+  template:
+    src: ansible_pg_audit.conf.j2
+    dest: "{{ postgresql_conf_dir }}/conf.d/28ansible_pg_audit.conf"
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+    backup: yes
+  when: pg_audit_postgres_conf is defined
+  notify: Restart PostgreSQL
