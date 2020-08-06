@@ -83,9 +83,27 @@ Role Variables
   Becomes the following in `25ansible_postgresql.conf`:
 
   ```
-  max_connections = 250
-  archive_mode = off
-  work_mem: '8MB'
+    
+    listen_addresses = '0.0.0.0'
+    max_connections = 200
+    password_encryption = scram-sha-256
+    max_wal_senders = 5
+    max_replication_slots = 5
+    ssl = on
+    ssl_ca_file = 'root.crt'
+    ssl_cert_file = 'pgmaster.crt'
+    ssl_key_file = 'pgmaster.key'
+    ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL'
+    ssl_prefer_server_ciphers = on
+    ssl_min_protocol_version = TLSv1.1
+    ssl_max_protocol_version = TLSv1.2
+    log_destination = 'syslog'
+    log_filename = 'postgresql-%a.log'
+    syslog_facility = 'LOCAL0'
+    syslog_ident = 'postgres'
+    syslog_sequence_numbers = True
+    syslog_split_messages = True
+
   ```
 
 - `postgresql_pg_hba_conf`: A list of lines to add to `pg_hba.conf`
@@ -301,6 +319,14 @@ pg_rman_postgres_conf:
   - archive_command: "'test ! -f /var/lib/pgsql/{{ postgresql_version }}/arclog/%f && cp %p /var/lib/pgsql/{{ postgresql_version }}/arclog/%f'"
 
 ```
+pg_rman.ini (default configuration.) It is extendable. 
+```yaml
+pg_rman_ini:
+  - option: COMPRESS_DATA
+    value: True
+```
+
+
 
 pg_audit
 
