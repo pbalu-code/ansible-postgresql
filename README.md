@@ -213,6 +213,8 @@ Variables:
  - `install_pg_rman`: `False/True` Turn on pg_rman installation (RPM source, Centos / Rhel 7-8 only)
  - `pg_rman_backup_folder`: `/var/lib/pgsql/12/backups` Where will backups saved.
  - `pg_rman_install_from_source`: `True/False` pg_rman is available in rpm and in source from github. `False: rpm will be installed.`, `True: The source will be cloned from the github and compiled.` In this case, all necessary devel packages git, make, zlib, ect. will be installed too.
+ - `pg_rman_git_repo`: `https://github.com/ossc-db/pg_rman.git` pg_rman source repo. There should be branches like: REL9_3_STABLE, 
+REL_12_STABLE, ect.
  - `pg_rman_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/26ansible_pg_rman.conf` 
  - `pg_rman_ini`: `{dict}`  Configuration parameters for pg_rman.ini "- {option: COMPRESS_DATA, value: true}"
 
