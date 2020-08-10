@@ -5,9 +5,10 @@
   postgresql_db:
     name: "{{ item.name }}"
     encoding: '{{ item.encoding }}'
-    lc_collate: '{{ item.locale }}'
-    lc_ctype: '{{ item.locale }}'
-    template: 'template0'
+    lc_collate: '{{ item.lc_collate | default(item.locale) }}'
+    lc_ctype: '{{ item.lc_ctype | default(item.locale) }}'
+    template: "{{ item.template | default('template0') }}"
+    tablespace: "{{ item.tablespace | default(omit) }}"
     state: present
   loop: "{{ postgresql_dbs }}"
   when:

@@ -176,6 +176,11 @@ Choices:
         - verify-full
     - `encoding`: UTF-8
     - `locale`: en_US.UTF-8
+    - `template`: 'template0'  # __optional!!!__ template0 is the default value
+    - `lc_collate`: en_US.UTF-8  # __optional!!!__ The default is the `locale` parameter from above. Collation order (LC_COLLATE) to use in the database. Must match collation order of template database unless template0 is used as template.
+    - `lc_ctype`: en_US.UTF-8  # __optional!!!__ The default is the `locale` parameter from above.
+    - `tablespace`: [Path] # Default: omit The tablespace to set for the database https://www.postgresql.org/docs/current/sql-alterdatabase.html.
+If you want to move the database back to the default tablespace, explicitly set this to pg_default. 
 
 - `postgresql_global_users`: __Optional__ Create non database specific users with special rights  
     - `name`: User's login name

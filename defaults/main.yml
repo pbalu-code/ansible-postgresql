@@ -39,6 +39,8 @@ pgrman_source_git: https://github.com/ossc-db/pg_rman.git
 #    user: pguser
 #    encoding: UTF-8
 #    locale: en_US.UTF-8
+#    template: 'template0'
+
 
 #locale: en_US.UTF-8
 #zone: Europe/Budapest
