@@ -147,11 +147,13 @@ Role Variables
 
 - `use_ssl`: boolean This option is turning on/off managing ssl keys transfer. 
 
-- `pg_ssl_key`: [path/]pgstandby.key
+    __SSL keys and certs must be placed in inventory_dir/files__  
+    For example ..../staging/files/
+- `pg_ssl_key`: pgstandby.key
 
-- `pg_ssl_cert`: [path/]pgstandby.crt
+- `pg_ssl_cert`: pgstandby.crt
 
-- `pg_ssl_ca`: [path/]root.crt
+- `pg_ssl_ca`: root.crt
 
 - `postgresql_pgdata`: Only set this if you have changed the `$PGDATA` directory from the package default. Note this
   does not configure PostgreSQL to actually use a different directory, you will need to do that yourself, it just allows

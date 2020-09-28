@@ -72,7 +72,7 @@
   - name: Copy SSL key file
     copy:
       remote_src: no
-      src: "{{ pg_ssl_key }}"
+      src: "{{ inventory_dir }}/files/{{ pg_ssl_key }}"
       dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_key }}"
       owner: "{{ postgresql_user_name }}"
       group: "{{ postgresql_user_name }}"
@@ -81,7 +81,7 @@
   - name: Copy SSL cert file
     copy:
       remote_src: no
-      src: "{{ pg_ssl_cert }}"
+      src: "{{ inventory_dir }}/files/{{ pg_ssl_cert }}"
       dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_cert }}"
       owner: "{{ postgresql_user_name }}"
       group: "{{ postgresql_user_name }}"
@@ -90,7 +90,7 @@
   - name: Copy CA root cert file
     copy:
       remote_src: no
-      src: "{{ pg_ssl_ca }}"
+      src: "{{ inventory_dir }}/files/{{ pg_ssl_ca }}"
       dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_ca }}"
       owner: "{{ postgresql_user_name }}"
       group: "{{ postgresql_user_name }}"
