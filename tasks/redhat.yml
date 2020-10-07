@@ -49,9 +49,14 @@
   register: dnf_pgsql
 
 - name: dnf cache update
-  dnf:
+  yum:
     update_cache: yes
   when: dnf_pgsql.changed
+
+- name: Import a key from a url
+  rpm_key:
+    state: present
+    key: https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG
 
 - name: install repo for PostgreSQL
   yum:

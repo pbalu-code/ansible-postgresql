@@ -22,8 +22,9 @@
     register: pg_rman_rpm
 
   - name: Install pg_rman
-    dnf:
+    yum:
       name: "{{ pg_rman_rpm.dest }}"
+      disable_gpg_check: yes
   when:
     - not pg_rman_bin.stat.exists
     - not pg_rman_install_from_source

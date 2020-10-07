@@ -223,7 +223,7 @@ Variables:
  - `pg_rman_git_repo`: `https://github.com/ossc-db/pg_rman.git` pg_rman source repo. There should be branches like: REL9_3_STABLE, 
 REL_12_STABLE, ect.
  - `pg_rman_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/26ansible_pg_rman.conf` 
- - `pg_rman_ini`: `{dict}`  Configuration parameters for pg_rman.ini "- {option: COMPRESS_DATA, value: true}"
+ - `pg_rman_ini`: `{dict}`  Configuration parameters for pg_rman.ini "- {option: COMPRESS_DATA, value: 'True'}"
 
 pg_audit
 ----------------
@@ -233,6 +233,7 @@ Variables:
  - `install_pg_audit`: `True/False`
  - `pg_audit_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/28ansible_pg_audit.conf` 
 
+The role does install pgaudit and pgaudittofile packages.
 
 Example Playbook
 ----------------
@@ -332,7 +333,7 @@ pg_rman.ini (default configuration.) It is extendable.
 ```yaml
 pg_rman_ini:
   - option: COMPRESS_DATA
-    value: True
+    value: "True"
 ```
 
 

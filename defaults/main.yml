@@ -8,7 +8,7 @@ pg_rman_install_from_source: true
 pg_rman_git_repo: https://github.com/ossc-db/pg_rman.git
 pg_rman_ini:
   - option: COMPRESS_DATA
-    value: True
+    value: "True"
 
 install_pg_audit: false
 #libzstd_url: "http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/libzstd-1.4.2-2.el8.x86_64.rpm"
