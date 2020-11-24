@@ -4,7 +4,7 @@ installpostgis: false
 posgis_to_install: postgis25_12
 install_pg_rman: false
 pg_rman_backup_folder: "/var/lib/pgsql/{{ postgresql_version }}/backups"
-pg_rman_install_from_source: true
+pg_rman_install_from_source: false
 pg_rman_git_repo: https://github.com/ossc-db/pg_rman.git
 pg_rman_ini:
   - option: COMPRESS_DATA
