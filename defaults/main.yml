@@ -1,7 +1,7 @@
 # postgres/defaults/main.yml
 ---
 postgresql_version: 12
-postgresql_installpostgis: false
+postgresql_install_postgis: false
 postgresql_posgis_to_install: postgis25_12
 # https://trac.osgeo.org/postgis/wiki/UsersWikiPostgreSQLPostGIS
 postgresql_posgis_to_install_ubuntu: postgresql-12-postgis-2.5

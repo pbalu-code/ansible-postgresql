@@ -80,7 +80,7 @@ provisioner:
         postgresql_ssl_dh: postgres_dh.crt  # not exists in 9.6
         postgresql_ssl_ca: root.crt
         postgresql_ssl_DH_size: 2048
-        #postgresql_installpostgis: true
+        #postgresql_install_postgis: true
         postgresql_network_password_mode: 'scram-sha-256'
         postgresql_conf:
           - listen_addresses: "'0.0.0.0'"

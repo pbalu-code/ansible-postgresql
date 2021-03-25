@@ -43,7 +43,7 @@
     name: "{{ postgresql_posgis_to_install_ubuntu }}"
     state: present
   when:
-    - postgresql_installpostgis
+    - postgresql_install_postgis
 
 - name: Check DB init state
   stat:

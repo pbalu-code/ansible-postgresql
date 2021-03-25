@@ -157,7 +157,7 @@ Role Variables
 
    Note that "password" sends passwords in clear text; "md5" or scram-sha-256" are preferred since they send encrypted passwords.
 
-- `postgresql_installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.  
+- `postgresql_install_postgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.  
 
 - `postgresql_posgis_to_install`: `postgis25_12` Declare which version of postgis to be installed.
 - `postgresql_posgis_to_install_ubuntu` (string or list): `postgresql-12-postgis-2.5, postgresql-12-postgis-scripts`  Declare which version of postgis to be installed under Ubuntu.

@@ -42,7 +42,7 @@
     notify: dnf_cache
 
   when:
-    - postgresql_installpostgis
+    - postgresql_install_postgis
 #    - ansible_distribution != "RedHat"
 
 - name: Disable original postgresql dnf module
@@ -123,7 +123,7 @@
     name: "{{ postgresql_posgis_to_install }}"
     state: present
   when:
-    - postgresql_installpostgis
+    - postgresql_install_postgis
 
 #- name: "Enable init.d script for {{ postgresql_version }}"
 #  shell: "chkconfig --level 2345 postgresql-{{ postgresql_version }} on"
