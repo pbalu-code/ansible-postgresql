@@ -1,0 +1,11 @@
+# postgresql/tasks/firewalld.yml
+---
+- name: Firewalld Open PostgreSQL ports
+  firewalld:
+    service: postgresql
+    permanent: yes
+    immediate: yes
+    state: enabled
+  when:
+    - postgresql_open_firewall
+    - ansible_facts.services['firewalld.service'].state == "running"

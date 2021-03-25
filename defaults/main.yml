@@ -1,17 +1,25 @@
+# postgres/defaults/main.yml
 ---
 postgresql_version: 12
-installpostgis: false
-posgis_to_install: postgis25_12
-install_pg_rman: false
-pg_rman_backup_folder: "/var/lib/pgsql/{{ postgresql_version }}/backups"
-pg_rman_install_from_source: false
-pg_rman_git_repo: https://github.com/ossc-db/pg_rman.git
-pg_rman_ini:
+postgresql_installpostgis: false
+postgresql_posgis_to_install: postgis25_12
+# https://trac.osgeo.org/postgis/wiki/UsersWikiPostgreSQLPostGIS
+postgresql_posgis_to_install_ubuntu: postgresql-12-postgis-2.5
+postgresql_install_pg_rman: false
+postgresql_pg_rman_install_from_source: false
+postgresql_pg_rman_git_repo: https://github.com/ossc-db/pg_rman.git
+postgresql_pg_rman_ini:
   - option: COMPRESS_DATA
     value: "True"
-
-install_pg_audit: false
-#libzstd_url: "http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/libzstd-1.4.2-2.el8.x86_64.rpm"
+postgresql_install_pg_audit: false
+postgresql_pgaudit_redhat_package: pgaudit14_12
+#pgaudit10_95.x86_64
+#pgaudit11_96.x86_64
+#pgaudit12_10.x86_64
+#pgaudit13_11.x86_64
+#pgaudit14_12.x86_64
+#pgaudit15_13.x86_64
+# For ubuntu it is automatic
 
 postgresql_pg_hba_conf:
       - "host all all 10.0.0.0/8 {{ postgresql_network_password_mode }}"
@@ -21,17 +29,33 @@ postgresql_network_password_mode: "md5"
 # "gss", "sspi", "ident", "peer", "pam", "ldap", "radius" or "cert".
 # Note that "password" sends passwords in clear text; "md5" or
 # "scram-sha-256" are preferred since they send encrypted passwords.
+postgresql_pg_hba_local_ipv6: false
 
-postgresql_pgdata_default: /var/lib/pgsql/{{ postgresql_version }}/data
-postgresql_conf_dir_default: /var/lib/pgsql/{{ postgresql_version }}/data
-postgresql_service_name: postgresql-{{ postgresql_version }}
 postgresql_user_name: postgres
-use_ssl: false
-open_firewalld: true
-init_replication: false
+postgresql_use_ssl: false
+postgresql_open_firewall: true
+postgresql_init_replication: false
 
-pgrman_source_git: https://github.com/ossc-db/pg_rman.git
+postgresql_pgrman_source_git: https://github.com/ossc-db/pg_rman.git
 
+postgresql_apt_repo: "deb https://apt.postgresql.org/pub/repos/apt {{ ansible_lsb.codename }}-pgdg main"
+postgresql_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+
+## For self signed key ####
+postgresql_ssl_curve: secp384r1
+postgresql_ssl_cipher: auto
+postgresql_ssl_size: 4096
+postgresql_ssl_type: RSA  # DSA  ECC  Ed25519  Ed448  RSA   X25519  X448
+postgresql_ssl_key: postgresql-ssl-key.pem
+postgresql_ssl_ca: postgresql-CA.pem
+postgresql_ssl_crt: postgresql-ssl.pem
+postgresql_ssl_dh: dhparam.pem
+#postgresql_ssl_alt_name:
+#  - "ip:{{ hostvars[inventory_hostname].ansible_host }}"
+#  - dns:postgresql.local
+postgresql_ssl_organization_name: "The Big One Organisation Ltd."
+postgresql_ssl_organization_unit_name: "IT - Who else"
+postgresql_ssl_HonorCipherOrder: "on"
 
 #postgresql_dbs:
 #  - name: database1

@@ -1,57 +1,66 @@
+#postgres/tasks/redhat.yml
 ---
 #- name: Ensure set LANGS
-#  shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' LC_MEASUREMENT='{{ locale }}' LC_IDENTIFICATION='{{ locale }}'"
+#  shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' \
+#  LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' \
+#  LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' \
+# LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' \
+#  LC_MEASUREMENT='{{ locale }}' LC_IDENTIFICATION='{{ locale }}'"
 
 #- name: Reinstall glibc (Hun support)
 #  command: "yum reinstall -y glibc-common"
 
+#- name: Install lang tools
+#  package:
+#    name:
+#      - langpacks-en
+#      - langpacks-hu
+#      - glibc-all-langpacks
+
 - block:
   - name: Make sure epel repo is installed
-    yum:
+    package:
       name: "epel-release"
       state: present
   - name: Install Code Ready (RedHat)
     shell:
-      cmd: "subscription-manager repos --enable codeready-builder-for-rhel-{{ ansible_distribution_major_version }}-x86_64-rpms"
+      cmd: "subscription-manager repos --enable \
+      codeready-builder-for-rhel-{{ ansible_distribution_major_version }}-x86_64-rpms"
     when: ansible_distribution == "RedHat"
 
   - name: Enable Powertools (for PostGIS)
     ini_file:
-      path: /etc/yum.repos.d/CentOS-PowerTools.repo
-      section: PowerTools
+      path: /etc/yum.repos.d/CentOS-Linux-PowerTools.repo
+      section: powertools
       option: enabled
       value: "1"
+      mode: 0644
     when:
       - ansible_distribution_major_version is version('8', '>=')
       - ansible_distribution != 'RedHat'
-    register: yum_cache_update
+      - ansible_os_family == "RedHat"
+    notify: dnf_cache
 
-  - name: yum update cache
-    yum:
-      update_cache: yes
-    when: yum_cache_update.changed
   when:
-    - installpostgis
+    - postgresql_installpostgis
 #    - ansible_distribution != "RedHat"
 
 - name: Disable original postgresql dnf module
   blockinfile:
     path: /etc/dnf/modules.d/postgresql.module
     create: yes
-    block : |
+    block: |
       [postgresql]
       name=postgresql
       profiles=
       state=disabled
       stream=
+    mode: 0644
   when:
     - ansible_facts['distribution_major_version'] == "8"
-  register: dnf_pgsql
+  notify: dnf_cache
 
-- name: dnf cache update
-  yum:
-    update_cache: yes
-  when: dnf_pgsql.changed
+- meta: flush_handlers
 
 - name: Import a key from a url
   rpm_key:
@@ -59,9 +68,11 @@
     key: https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG
 
 - name: install repo for PostgreSQL
-  yum:
-#    name: "https://download.postgresql.org/pub/repos/yum/{{ postgresql_version }}/redhat/rhel-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
-    name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+  package:
+#    name: "https://download.postgresql.org/pub/repos/yum/{{ postgresql_version }}\
+#  /redhat/rhel-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+    name: "https://download.postgresql.org/pub/repos/yum/reporpms/\
+    EL-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
     state: present
   when:
     - outgoing_proxy is not defined
@@ -71,14 +82,8 @@
     __postgresql_version_dotless: "{{ postgresql_version | replace('.', '') | replace('-', '') }}"
     __postgresql_command_sep: "{{ postgresql_version is version('10', '>=') | ternary('-', '') }}"
 
-
-- name: install python module for Postgres
-  yum:
-    name: "{{ ansible_facts['distribution_major_version'] is version('8', '>=') | ternary('python3-psycopg2', 'python-psycopg2') }}"
-    state: present
-
 - name: "Install PostgreSQL version {{ postgresql_version }}"
-  yum:
+  package:
     name:
       - "postgresql{{ __postgresql_version_dotless }}-server"
       - "postgresql{{ __postgresql_version_dotless }}-contrib"
@@ -87,27 +92,67 @@
       - "pg_repack{{ __postgresql_version_dotless }}"
     state: present
 
+# posgres_db modul - Failed to import the required Python library (psycopg2)
+- name: install python module for Postgres Redhat 8+
+  package:
+    name:
+      - "{% if ansible_python_version is version('3', '<') %}python2-psycopg2{% elif \
+          ansible_python_version is version('3.8', '<') %}python3-psycopg2{% else \
+          %}python38-psycopg2{% endif %}"
+    state: present
+  when: ansible_distribution_major_version is version('8', '>=')
+
+- name: install python module for Postgres Redhat 7
+  package:
+    name:
+      - "{% if ansible_python_version is version('3', '<') %}python-psycopg2{% elif \
+          ansible_python_version is version('3.8', '<') %}python3-psycopg2{% else \
+          %}python38-psycopg2{% endif %}"
+    state: present
+  when: ansible_distribution_major_version is version('8', '<')
+
+- name: Install Postgresql libs for python
+  package:
+    name:
+      - "{{ ansible_distribution_major_version is version('8', '>=') | \
+      ternary('libpq-devel', 'libpq5-devel') }}"
+  when: postgresql_version is version('10', '<')
+
 - name: Install PostGIS
-  yum:
-    name: "{{ posgis_to_install }}"
+  package:
+    name: "{{ postgresql_posgis_to_install }}"
     state: present
   when:
-    - installpostgis
+    - postgresql_installpostgis
 
+#- name: "Enable init.d script for {{ postgresql_version }}"
+#  shell: "chkconfig --level 2345 postgresql-{{ postgresql_version }} on"
+#  when:
+#    - ansible_os_family == "RedHat"
+#    - ansible_distribution_major_version == "7"
 - name: "Enable init.d script for {{ postgresql_version }}"
-  shell: "chkconfig --level 2345 postgresql-{{ postgresql_version }} on"
+  sysvinit:
+    name: "postgresql-{{ postgresql_version }}"
+    #state: started
+    enabled: yes
+    runlevels:
+      - 2
+      - 3
+      - 4
+      - 5
   when:
     - ansible_os_family == "RedHat"
-    - ansible_distribution_major_version == "7"
+    - ansible_distribution_major_version == "6"
 
 - name: Check DB init state
   stat:
-    path: /var/lib/pgsql/{{ postgresql_version }}/data/pg_tblspc
+    path: "{{ postgresql_pgdata }}/pg_tblspc"
   register: dbinit
 
 - name: Create database
-  command: "/usr/pgsql-{{ postgresql_version }}/bin/postgresql{{__postgresql_command_sep }}{{ __postgresql_version_dotless }}-setup initdb
-          creates=/var/lib/pgsql/{{ postgresql_version }}/data/postgresql.conf"
+  command: "{{ postgresql_bin_dir }}/postgresql\
+    {{ __postgresql_command_sep }}{{ __postgresql_version_dotless }}-setup initdb
+    creates={{ postgresql_pgdata }}/postgresql.conf"
   become: true
   #become_user: "{{ postgresql_user_name }}"
   when: not dbinit.stat.exists
@@ -115,35 +160,18 @@
 - name: update environment variables in UNIX account postgres
   blockinfile:
     create: yes
-    dest: /var/lib/pgsql/.pgsql_profile
+    dest: "{{ postgresql_home }}/.pgsql_profile"
     block: |
-      export PGHOST=/tmp PAGER=less PGDATA=/var/lib/pgsql/{{ postgresql_version }}/data
+      export PGHOST=/tmp PAGER=less PGHOST=/tmp PAGER=less PGDATA={{ postgresql_pgdata_default }}
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
     marker: "#{mark} ANSIBLE MANAGED BLOCK General"
+    mode: 0640
   become: true
 
 - name: start postgresql service
   service:
-    name: "postgresql-{{ postgresql_version }}"
+    name: "{{ postgresql_service_name }}"
     state: started
     enabled: true
   become: true
-
-- name: Gather the rpm package facts
-  package_facts:
-    manager: auto
-  when: open_firewalld
-
-- name: Populate service facts
-  service_facts:
-
-- name: Firewalld Open PostgreSQL ports
-  firewalld:
-    service: postgresql
-    permanent: yes
-    immediate: yes
-    state: enabled
-  when:
-    - open_firewalld
-    - ansible_facts.services['firewalld.service'].state == "running"

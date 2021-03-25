@@ -1,0 +1,67 @@
+#postgres/molecule/docker/prepare.yml
+---
+- hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+      cache_valid_time: 24000
+    when: ansible_os_family == "Debian"
+
+  - name: Lookup LANG
+    set_fact:
+      locale: "{{ lookup('env', 'LANG') | default('en_US.UTF-8') }}"
+
+  - name: Install lang tools
+    package:
+      name:
+        - langpacks-en
+        - langpacks-hu
+        - glibc-all-langpacks
+
+  - name: Ensure set LANGS
+    shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' \
+    LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' \
+    LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' \
+    LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' \
+    LC_MEASUREMENT='{{ locale }}' LC_IDENTIFICATION='{{ locale }}'"
+
+  #- name: Reinstall glibc (Hun support)
+  #  command: "yum reinstall -y glibc-common"
+
+  - name: Install SSH server
+    package:
+      name: openssh-server
+
+  - name: update sshd conf
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: '^PasswordAuthentication.*$'
+      line: 'PasswordAuthentication yes'
+    register: sshconfchanged
+
+  - name: start sshd
+    service:
+      name: sshd
+      enabled: true
+      state: started
+
+  #- name: Update altenative python
+  #  alternatives:
+  #    name: python
+  #    path: "{{ python_bin }}"
+
+  - name: Remove nologin
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /run/nologin
+      - /etc/nologin
+      - /var/run/nologin
+
+  - name: Install full Python
+    package:
+      name: "{{ ansible_distribution_major_version is version('8', '>=') | ternary('python3', 'python') }}"

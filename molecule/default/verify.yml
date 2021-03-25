@@ -1,0 +1,10 @@
+# postgres/molecule/default/verify.yml
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify users
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Example assertion
+    assert:
+      that: true

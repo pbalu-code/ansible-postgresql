@@ -1,1 +1,77 @@
+#postgresql/tasks/ubuntu.yml
 ---
+- name: Add an Apt signing key, uses whichever key is at the URL
+  ansible.builtin.apt_key:
+    url: "{{ postgresql_apt_key_url }}"
+    state: present
+
+- name: Add Postgres APT repository into sources list
+  ansible.builtin.apt_repository:
+    repo: "{{ postgresql_apt_repo }}"
+    update_cache: true
+    state: present
+
+- name: install python module for Postgres
+  package:
+    name: "{% if ansible_python_version is version('3', '<') %}python-psycopg2{% else \
+           %}python3-psycopg2{% endif %}"
+    state: present
+
+- name: Set PostgreSQL dotless version fact
+  set_fact:
+    __postgresql_version_dotless: "{{ postgresql_version | replace('.', '') | replace('-', '') }}"
+    __postgresql_command_sep: "{{ postgresql_version is version('10', '>=') | ternary('-', '') }}"
+
+- name: "Install PostgreSQL version {{ postgresql_version }}"
+  package:
+    name:
+      - "postgresql-{{ postgresql_version }}"
+      - "postgresql-client-{{ postgresql_version }}"
+      - libpq-dev
+      #- "postgresql-{{ __postgresql_version_dotless }}-libs"
+      #- "pg_repack-{{ __postgresql_version_dotless }}"
+    state: present
+
+- name: Install Postgre contrib package
+  package:
+    name: "postgresql-contrib-{{ postgresql_version }}"
+    state: present
+  when: postgresql_version is version('10', '<')
+
+- name: Install PostGIS
+  package:
+    name: "{{ postgresql_posgis_to_install_ubuntu }}"
+    state: present
+  when:
+    - postgresql_installpostgis
+
+- name: Check DB init state
+  stat:
+    path: "{{ postgresql_pgdata }}/pg_tblspc"
+  register: dbinit
+
+- name: Create database
+  command: "{{ postgresql_bin_dir }}/initdb \
+   -D {{ postgresql_pgdata }}"
+  become: true
+  become_user: "{{ postgresql_user_name }}"
+  when: not dbinit.stat.exists
+
+- name: update environment variables in UNIX account postgres
+  blockinfile:
+    create: yes
+    dest: "{{ postgresql_home }}/.pgsql_profile"
+    block: |
+      export PGHOST=/tmp PAGER=less PGHOST=/tmp PAGER=less PGDATA={{ postgresql_pgdata_default }}
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+    marker: "#{mark} ANSIBLE MANAGED BLOCK General"
+    mode: 0640
+  become: true
+
+- name: start postgresql service
+  service:
+    name: "{{ postgresql_service_name }}"
+    state: started
+    enabled: true
+  become: true

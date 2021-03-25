@@ -1,0 +1,16 @@
+# postgresql/molecule/tests/lint.yml
+---
+skip_list:
+  - 'command-instead-of-shell'
+warn_list:
+  - 'package-latest'
+  - 'meta-no-info'
+  - 'meta-incorrect'
+  - 'meta-no-tags'
+  - 'no-handler'
+
+exclude_paths:
+  - bin/
+  - .idea/
+  - lib/
+  - lib64/

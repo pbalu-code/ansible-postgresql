@@ -1,3 +1,4 @@
+# postgres/tasks/main.yml
 ---
 #- name: Include distribution dependent variables
 #  include_vars: "{{ item }}"
@@ -5,35 +6,85 @@
 #    - "{{ ansible_distribution }}.yml"
 #    - "{{ ansible_os_family }}.yml"
 #  tags: postgres
-- include_tasks: redhat.yml
+- name: Include vars for Ubuntu
+  include_vars: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
+
+- name: Include vars for RedHat
+  include_vars: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Set conf dir fact
+  set_fact:
+    postgresql_conf_dir: "{{ postgresql_conf_dir_default }}"
+  when: postgresql_conf_dir is not defined
+
+- name: Set pgdata fact
+  set_fact:
+    postgresql_pgdata: "{{ postgresql_pgdata_default }}"
+  when: postgresql_pgdata is not defined
+
+- name: Include install tasks for RedHat
+  include_tasks: redhat.yml
   when:
     - ansible_os_family == "RedHat"
-
-- include_tasks: ubuntu.yml
+- name: Include install tasks for Ubuntu
+  include_tasks: ubuntu.yml
   when:
     - ansible_distribution == "Ubuntu"
 
-- include_tasks: config.yml
-- include_tasks: databases.yml
-- include_tasks: users.yml
+- name: Gather the rpm package facts
+  package_facts:
+    manager: auto
+  when: postgresql_open_firewall
 
-- include_tasks: pgrman.yml
+- name: Populate service facts
+  service_facts:
+
+- name: Include tasks for Firewalld
+  include_tasks: firewalld.yml
   when:
-    - install_pg_rman
+    - postgresql_open_firewall
     - ansible_os_family == "RedHat"
+    - ansible_facts.services['firewalld.service'] is defined
+    - ansible_facts.services['firewalld.service'].state == "running"
 
-- include_tasks: pgaudit.yml
+- name: Include tasks for UFW
+  include_tasks: ufw.yml
   when:
-    - install_pg_audit
+    - postgresql_open_firewall
+    - ansible_distribution == "Ubuntu"
+    - ansible_facts.services['ufw.service'] is defined
+    - ansible_facts.services['ufw.service'].state == "running"
+
+- name: Include Config's tasks
+  include_tasks: config.yml
+
+- name: Include database managers's tasks
+  include_tasks: databases.yml
+
+- name: Include user manager's tasks
+  include_tasks: users.yml
+
+- name: Include pgrman's tasks
+  include_tasks: pgrman.yml
+  when:
+    - postgresql_install_pg_rman
+
+- name: Include pgaudit's tasks
+  include_tasks: pgaudit.yml
+  when:
+    - postgresql_install_pg_audit
 
 - name: Check is replication necessary
   stat:
     path: "{{ postgresql_pgdata }}/standby.signal"
   register: standby_signal
-
-- include_tasks: initreplication.yml
   when:
-    - init_replication
+    - postgresql_init_replication
+
+- name: Include replication's tasks
+  include_tasks: initreplication.yml
+  when:
+    - postgresql_init_replication
     - not standby_signal.stat.exists
-
-

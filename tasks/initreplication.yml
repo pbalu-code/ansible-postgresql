@@ -1,20 +1,53 @@
+# postgres/tasks/initreplication.yml
 ---
+- name: Check is replication OK
+  stat:
+    path: "{{ postgresql_pgdata }}/standby.signal"
+  register: standby_signal_ok
+
 - name: Stop standby PostgreSQL
   service:
     name: "{{ postgresql_service_name }}"
     state: stopped
+  when: not standby_signal_ok.stat.exists
 
-- name: Empty PSQL data folder
-  shell: "rm -rf {{ postgresql_pgdata_default }}/*"
+- name: Create list of the data folder's content
+  find:
+    path: "{{ postgresql_pgdata }}/"
+    patterns: "*"
+    file_type: any
+  register: datafolder
+
+- name: Remove PSQL data folder's content
+  file:
+    state: absent
+    path: "{{ item.path }}"
+  loop: "{{ datafolder.files }}"
+  no_log: True
+  when: not standby_signal_ok.stat.exists
+
+#- name: Recreate PSQL data folder
+#  file:
+#    state: directory
+#    owner: datafolder.stat.uid
+#    group: datafolder.stat.gid
+#    mode: datafolder.stat.mode
+#    path: "{{ postgresql_pgdata }}/"
+#  when: not standby_signal_ok.stat.exists
 
 - name: Make pg_basebackup
   become_user: "{{ postgresql_user_name }}"
-  shell: "pg_basebackup -h {{ replication_master }} -D {{ postgresql_pgdata_default }} -U replicator -P -w -v  -R -X stream -C -S {{ pg_standby_slot_name }}"
+  shell: "pg_basebackup -h {{ postgresql_replication_master }} -D {{ postgresql_pgdata }} \
+  -U replicator -w -v -R -X stream -C -S {{ postgresql_standby_slot_name }}"
+  when:
+    - not standby_signal_ok.stat.exists
+# http://www.postgresql.cn/docs/12/app-pgbasebackup.html
+
 
 # for redo conf at standy
 - include_tasks: config.yml
 
-- name: Check is replication is OK
+- name: Final replication Check
   stat:
     path: "{{ postgresql_pgdata }}/standby.signal"
   register: standby_signal_ok

@@ -1,20 +1,12 @@
+# postgres/tasks/config.yml
 ---
-- name: Set pgdata fact
-  set_fact:
-    postgresql_pgdata: "{{ postgresql_pgdata_default }}"
-  when: postgresql_pgdata is not defined
-
-- name: Set conf dir fact
-  set_fact:
-    postgresql_conf_dir: "{{ postgresql_conf_dir_default }}"
-  when: postgresql_conf_dir is not defined
-
 - name: Create conf.d
   file:
     path: "{{ postgresql_conf_dir }}/conf.d"
     state: directory
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
+    mode: 0755
 
 - name: Include ansible_postgresql.conf in postgresql.conf
   lineinfile:
@@ -30,6 +22,7 @@
     dest: "{{ postgresql_conf_dir }}/conf.d/25ansible_postgresql.conf"
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
+    mode: 0644
     backup: yes
   notify: Restart PostgreSQL
 
@@ -39,19 +32,22 @@
     dest: "{{ postgresql_conf_dir }}/pg_hba.conf"
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
-    mode: '0400'
+    mode: '0640'
     backup: yes
   notify: Restart PostgreSQL
 
-
-# lineinfile's behavior when `backrefs = True` is very odd. We don't want to overwrite include_dirs if it's already
-# properly set, but we don't know the exact format it will be in (with or without '=', with a comment at end of line,
+# lineinfile's behavior when `backrefs = True` is very odd.
+#  We don't want to overwrite include_dirs if it's already
+# properly set, but we don't know the exact format it will
+#  be in (with or without '=', with a comment at end of line,
 # etc.). So check for a match first and then add if there's no match.
 - name: Check for conf.d include in postgresql.conf
   lineinfile:
     line: 'why ansible ;)'
-    # The '=' is optional but is present in postgresql.conf.sample, which Debian's sample is based off of (but include*
-    # directive examples in the PostgreSQL docs don't use it). Also ignore comments and whitespace after the directive.
+    # The '=' is optional but is present in postgresql.conf.sample,
+    # which Debian's sample is based off of (but include*
+    # directive examples in the PostgreSQL docs don't use it).
+    # Also ignore comments and whitespace after the directive.
     regexp: '^include_dir(\s+|\s*=\s*)?''conf.d''\s*(#.*)?$'
     path: "{{ postgresql_conf_dir }}/postgresql.conf"
     backrefs: true
@@ -68,36 +64,9 @@
   notify: Restart PostgreSQL
   when: "postgresql_version is version_compare('9.3', '>=') and __postgresql_include_dir_result is changed"
 
-- block:
-  - name: Copy SSL key file
-    copy:
-      remote_src: no
-      src: "{{ inventory_dir }}/files/{{ pg_ssl_key }}"
-      dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_key }}"
-      owner: "{{ postgresql_user_name }}"
-      group: "{{ postgresql_user_name }}"
-      mode: '0600'
-
-  - name: Copy SSL cert file
-    copy:
-      remote_src: no
-      src: "{{ inventory_dir }}/files/{{ pg_ssl_cert }}"
-      dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_cert }}"
-      owner: "{{ postgresql_user_name }}"
-      group: "{{ postgresql_user_name }}"
-      mode: '0600'
-
-  - name: Copy CA root cert file
-    copy:
-      remote_src: no
-      src: "{{ inventory_dir }}/files/{{ pg_ssl_ca }}"
-      dest: "{{ postgresql_pgdata_default }}/{{ pg_ssl_ca }}"
-      owner: "{{ postgresql_user_name }}"
-      group: "{{ postgresql_user_name }}"
-      mode: '0600'
-    when:
-      - pg_ssl_ca is defined
-  when: use_ssl
+- name: Include SSL related tasks
+  include_tasks: ssl_cert.yml
+  when: postgresql_use_ssl
 
 - name: Force all notified handlers to run at this point, not waiting for normal sync points
   meta: flush_handlers

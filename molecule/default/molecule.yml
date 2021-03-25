@@ -1,0 +1,220 @@
+# postgresql/molecule/default/molecule.yml
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+
+lint: |
+  yamllint -c molecule/tests/yamllint.yml .
+  ansible-lint -v -c molecule/tests/lint.yml .
+
+vagrant:
+  raw_config_args:
+    #- "ssh.insert_key = false"
+    - "vm.network 'forwarded_port', guest: 80, host: 8080"
+
+platforms:
+  - name: postgres-centos7
+    box: "bento/centos-7.9"
+    memory: 4096
+    groups:
+      - postgres
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: "192.168.233.144"
+  - name: postgres-centos8
+    box: "bento/centos-8.3"
+    memory: 4096
+    groups:
+      - postgres
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: "192.168.233.145"
+    options:
+      append_platform_to_hostname: false
+  - name: postgres-ubuntu18
+    box: ubuntu/bionic64
+    groups:
+      - postgres
+    memory: 4096
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        auto_config: true
+        ip: "192.168.233.146"
+  - name: postgres-ubuntu20
+    box: "generic/ubuntu2004"
+    groups:
+      - postgres
+    memory: 4096
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        auto_config: true
+        ip: "192.168.233.147"
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      allow_world_readable_tmpfiles: True
+      pipelining: True
+  lint:
+    name: |
+      yamllint -c molecule/tests/yamllint.yml .
+      ansible-lint -v -c molecule/tests/lint.yml .
+  inventory:
+    group_vars:
+      postgres:
+        postgresql_version: 13
+        # postgresql_posgis_to_install: postgis24_96
+        # postgresql_posgis_to_install_ubuntu:
+        #   - postgresql-9.6-postgis-2.5
+        #postgresql_pgaudit_redhat_package: pgaudit11_96
+        #
+        postgresql_use_ssl: true
+        postgresql_ssl_key: postgres.key
+        postgresql_ssl_crt: postgres.crt
+        postgresql_ssl_dh: postgres_dh.crt  # not exists in 9.6
+        postgresql_ssl_ca: root.crt
+        postgresql_ssl_DH_size: 2048
+        #postgresql_installpostgis: true
+        postgresql_network_password_mode: 'scram-sha-256'
+        postgresql_conf:
+          - listen_addresses: "'0.0.0.0'"
+          - max_connections: '200'       # decrease connection limit
+          - password_encryption: 'scram-sha-256'
+          - max_wal_senders: 5
+          - max_replication_slots: 5
+          - ssl: "on"
+          - ssl_ca_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_ca }}'"
+          - ssl_cert_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_crt }}'"
+          - ssl_key_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_key }}'"
+          - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
+          # ssl_dh_params_file - not exists in 9.6, 10(Centos)
+          - ssl_dh_params_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_dh }}'"
+          - ssl_prefer_server_ciphers: "on"
+          - ssl_min_protocol_version: 'TLSv1.1'  # not exists in 9.6
+          - ssl_max_protocol_version: 'TLSv1.2'  # not exists in 9.6
+          - log_destination: "'syslog'"
+          - log_filename: "'postgresql-%a.log'"
+          - syslog_facility: "'LOCAL0'"
+          - syslog_ident: "'postgres'"
+          - syslog_sequence_numbers: on
+          - syslog_split_messages: on
+        postgresql_global_users:
+          - user: "replicator"
+            # password: "titok123"
+            # ssl_mode: require
+            role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,INHERIT,LOGIN,REPLICATION"
+
+        postgresql_pg_hba_conf:
+          #- "hostssl	replication		replicator		0.0.0.0/0		trust"
+          - "host	replication		replicator		0.0.0.0/0		trust"
+          #- "host	replication		replicator		0.0.0.0/0		scram-sha-256"
+          - "hostssl	demo		bull		0.0.0.0/0		scram-sha-256"
+          - "host   	demo		bull		0.0.0.0/0		scram-sha-256"
+        #  - "hostssl	demo		bull		0.0.0.0/0		md5"
+        #  - "host   	demo		bull		0.0.0.0/0		md5"
+
+        #postgresql_dbs:
+        #  - name: "demo"
+        #    password: "secret123"
+        #    user: "bull"
+        #    encoding: UTF-8
+        #    locale: en_US.UTF-8
+        #    lc_collate: en_US.UTF-8
+
+        #postgresql_install_pg_audit: true
+        postgresql_pg_audit_postgres_conf:
+          - pgaudit.log: "'role, misc_set'"
+          - pgaudit.log_level: "'error'"
+          - shared_preload_libraries: "'pgaudit, pg_stat_statements'"
+
+        #postgresql_install_pg_rman: true
+        postgresql_pg_rman_postgres_conf:
+          - wal_init_zero: on
+          - wal_level: replica
+          - archive_mode: on
+          - archive_command: "'test ! -f {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f \
+            && cp %p {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f'"
+    host_vars:
+      postgres-centos7:
+        postgresql_standby_slot_name: pgstandby1
+        postgresql_replication_master: "192.168.233.145"
+        postgresql_init_replication: true
+      postgres-centos8:
+        postgresql_dbs:
+          - name: "demo"
+            password: "secret123"
+            user: "bull"
+            encoding: UTF-8
+            locale: en_US.UTF-8
+            lc_collate: en_US.UTF-8
+      postgres-ubuntu18:
+        postgresql_replication_master: "192.168.233.147"
+        postgresql_standby_slot_name: pgstandby1
+        postgresql_init_replication: true
+      postgres-ubuntu20:
+        postgresql_dbs:
+          - name: "demo"
+            password: "secret123"
+            user: "bull"
+            encoding: UTF-8
+            locale: en_US.UTF-8
+            lc_collate: en_US.UTF-8
+verifier:
+  #name: ansible
+  name: testinfra
+  lint:
+    name: flake8
+  options:
+    sudo: true
+    v: 1
+  directory: ../tests
+
+#additional_files_or_dirs:
+  #    - ../path/to/test_1.py
+  #    - ../path/to/test_2.py
+  #    - ../path/to/directory/*
+
+scenario:
+  create_sequence:
+    # - dependency # not configured yet.
+    - create
+    - prepare
+  check_sequence:
+    - dependency # not configured yet.
+    # - cleanup # not configured yet.
+    - destroy
+    - create
+    - prepare
+    - converge
+    - check
+    - destroy
+  converge_sequence:
+    - dependency # not configured yet.
+    - lint
+    - create
+    - prepare
+    - converge
+  destroy_sequence:
+    #- dependency # not configured yet.
+    #- cleanup # not configured yet.
+    - destroy
+  test_sequence:
+    - dependency # not configured yet.
+    - lint
+    # - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    # - side_effect # not configured yet.
+    - verify
+    # - cleanup # not configured yet.
+    - destroy

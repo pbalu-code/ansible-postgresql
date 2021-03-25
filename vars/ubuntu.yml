@@ -1,0 +1,7 @@
+# postgres/vars/ubuntu.yml
+---
+postgresql_pgdata_default: /var/lib/postgresql/{{ postgresql_version }}/main
+postgresql_conf_dir_default: /etc/postgresql/{{ postgresql_version }}/main
+postgresql_bin_dir: "/usr/lib/postgresql/{{ postgresql_version }}/bin"
+postgresql_service_name: postgresql
+postgresql_home: /var/lib/postgresql

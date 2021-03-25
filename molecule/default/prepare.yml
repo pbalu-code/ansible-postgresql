@@ -1,0 +1,114 @@
+#/postgres/molecule/default/prepare.yml
+---
+- hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+      cache_valid_time: 24000
+    when: ansible_os_family == "Debian"
+
+  - name: update sshd conf
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: '^PasswordAuthentication.*$'
+      line: 'PasswordAuthentication yes'
+    register: sshconfchanged
+
+  - name: restart sshd
+    service:
+      name: sshd
+      state: reloaded
+    when: sshconfchanged.changed
+
+  #- name: Update altenative python
+  #  alternatives:
+  #    name: python
+  #    path: "{{ python_bin }}"
+
+  - name: Prepare in RHEL/Centos way
+    block:
+      - name: Install firewalld
+        yum:
+          name: firewalld
+          state: present
+
+      - name: Enable firewalld service
+        systemd:
+          name: firewalld
+          state: started
+          enabled: true
+
+      - name: Firewalld Open SSH
+        ansible.posix.firewalld:
+          service: ssh
+          permanent: true
+          immediate: true
+          state: enabled
+
+      - name: Firewalld Disable Cockpit
+        ansible.posix.firewalld:
+          service: cockpit
+          permanent: true
+          immediate: true
+          state: disabled
+
+      - name: Firewalld enable ICMP echo-reply
+        ansible.posix.firewalld:
+          icmp_block: echo-reply
+          permanent: true
+          immediate: true
+          state: enabled
+
+      - name: Firewalld enable ICMP echo-request
+        ansible.posix.firewalld:
+          icmp_block: echo-request
+          permanent: true
+          immediate: true
+          state: enabled
+
+      - name: Firewalld enable icmp_block_inversion
+        ansible.posix.firewalld:
+          icmp_block_inversion: 'true'
+          permanent: true
+          immediate: true
+          state: enabled
+    when: ansible_os_family == "Redhat"
+
+  - name: Prepare in Debian way
+    block:
+      - name: Install UFW
+        package:
+          name: ufw
+          state: present
+
+      - name: Enable ufw service
+        systemd:
+          name: ufw
+          state: started
+          enabled: true
+
+      - name: Firewalld Open SSH
+        community.general.ufw:
+          rule: allow
+          name: OpenSSH
+
+      - name: Set logging
+        community.general.ufw:
+          logging: 'on'
+    when: ansible_os_family == "Debian"
+
+  - name: Remove nologin
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /run/nologin
+      - /etc/nologin
+      - /var/run/nologin
+
+  - name: Install full Python
+    package:
+      name: "{{ ansible_distribution_major_version is version('8', '>=') | ternary('python3', 'python') }}"

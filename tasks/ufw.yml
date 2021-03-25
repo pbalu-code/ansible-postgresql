@@ -1,0 +1,7 @@
+# postgresql/tasks/ufw.yml
+---
+- name: Allow connection on PosgreSQL default port
+  ufw:
+    rule: allow
+    port: 5432
+    proto: tcp

@@ -1,0 +1,142 @@
+# postgresql/tasks/ssl_cert.yml
+---
+- name: Check SSL certs are provided
+  delegate_to: localhost
+  stat:
+    path: "{{ inventory_dir }}/files/{{ postgresql_ssl_crt }}"
+  register: external_crt
+
+- name: Insall cryptography modul for ansible (Python 2.7-3.7-3.8)
+  package:
+    name: "{% if ansible_python_version is version('3', '<') %}python2-cryptography{% elif \
+    ansible_python_version is version('3.8', '<') %}python3-cryptography{% elif \
+    ansible_os_family == 'RedHat' and ansible_python_version is version('3.8', '>=') \
+    %}python38-cryptography{% else %}python3-cryptography{% endif %}"
+    state: present
+  when:
+    - not external_crt.stat.exists or ( postgresql_ssl_dh is defined )
+
+- name: Generate Diffie-Hellman parameters
+  community.crypto.openssl_dhparam:
+    path: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_dh }}"
+    size: "{{ postgresql_ssl_DH_size | default(omit) }}"
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+    mode: 0644
+  when:
+    - postgresql_ssl_dh is defined
+    - postgresql_version is version('10', '>=')
+
+- name: Generate self signed certs
+  block:
+    - name: Create SSL CA key
+      community.crypto.openssl_privatekey:
+        path: "{{ postgresql_conf_dir }}/selfsign-CA-key.pem"
+        curve: "{{ postgresql_ssl_curve }}"
+        size: "{{ postgresql_ssl_size }}"
+        type: "{{ postgresql_ssl_type }}"
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0640
+
+    - name: Generate an OpenSSL Certificate Signing Request for CA
+      community.crypto.openssl_csr:
+        path: "{{ postgresql_conf_dir }}/selfsigned-CA.csr"
+        privatekey_path: "{{ postgresql_conf_dir }}/selfsign-CA-key.pem"
+        common_name: "root.local"
+        organization_name: "{{ postgresql_ssl_organization_name | default(omit) }}"
+        organizational_unit_name: "{{ postgresql_ssl_organization_unit_name | default(omit) }}"
+        key_usage:
+          - digitalSignature
+          - keyAgreement
+          - keyCertSign
+        basic_constraints: CA:TRUE
+        basic_constraints_critical: true
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0640
+
+    - name: Selfsign CA
+      community.crypto.x509_certificate:
+        path: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_ca }}"
+        csr_path: "{{ postgresql_conf_dir }}/selfsigned-CA.csr"
+        privatekey_path: "{{ postgresql_conf_dir }}/selfsign-CA-key.pem"
+        provider: selfsigned
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0644
+      notify: Restart PostgreSQL
+
+    - name: Create SSL key for postgresql
+      community.crypto.openssl_privatekey:
+        path: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_key }}"
+        curve: "{{ postgresql_ssl_curve }}"
+        size: "{{ postgresql_ssl_size }}"
+        type: "{{ postgresql_ssl_type }}"
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0600
+
+    - name: Generate an OpenSSL Certificate Signing Request for /postgresql
+      community.crypto.openssl_csr:
+        path: "{{ postgresql_conf_dir }}/postgresql.csr"
+        privatekey_path: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_key }}"
+        common_name: "{{ postgresql_ssl_common_name | default(inventory_hostname) }}"
+        organization_name: "{{ postgresql_ssl_organization_name | default(omit) }}"
+        organizational_unit_name: "{{ postgresql_ssl_organization_unit_name | default(omit) }}"
+        subject_alt_name: "{{ postgresql_ssl_alt_name | default(omit) }}"
+        key_usage:
+          - keyEncipherment
+          - nonRepudiation
+          - digitalSignature
+        key_usage_critical: no
+        basic_constraints: CA:FALSE
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0640
+
+    - name: Sign postgresql SSL cert
+      community.crypto.x509_certificate:
+        path: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_crt }}"
+        csr_path: "{{ postgresql_conf_dir }}/postgresql.csr"
+        ownca_privatekey_path: "{{ postgresql_conf_dir }}/selfsign-CA-key.pem"
+        provider: ownca
+        ownca_path: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_ca }}"
+        #signature_algorithms: "{{ postgresql_ssl_signature_algorithms }}"
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0644
+      notify: Restart PostgreSQL
+  when: not external_crt.stat.exists
+
+- name: External cert and key
+  block:
+    - name: Copy external SSL cert
+      ansible.builtin.copy:
+        remote_src: false
+        src: "{{ inventory_dir }}/files/{{ postgresql_ssl_crt }}"
+        dest: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_crt }}"
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0644
+
+    - name: Copy external SSL key
+      ansible.builtin.copy:
+        remote_src: false
+        src: "{{ inventory_dir }}/files/{{ postgresql_ssl_key }}"
+        dest: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_key }}"
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0600
+
+    - name: Copy external CA
+      ansible.builtin.copy:
+        remote_src: false
+        src: "{{ inventory_dir }}/files/{{ postgresql_ssl_ca }}"
+        dest: "{{ postgresql_conf_dir }}/{{ postgresql_ssl_ca }}"
+        owner: "{{ postgresql_user_name }}"
+        group: "{{ postgresql_user_name }}"
+        mode: 0644
+  when:
+    - postgresql_ssl_crt is defined
+    - external_crt.stat.exists

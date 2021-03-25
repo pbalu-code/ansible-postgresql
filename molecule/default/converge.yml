@@ -1,0 +1,11 @@
+# postgresql/molecule/default/converge.yml
+---
+- name: Converge-Postgresql
+  hosts: postgres
+  become: true
+  vars:
+
+  tasks:
+    - name: Include PostgreSQL role
+      include_role:
+        name: "ansible-postgresql"

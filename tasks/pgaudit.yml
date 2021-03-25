@@ -1,8 +1,18 @@
+# postgres/tasks/pgaudit.yml
 ---
-- name: Install pg_audit
+- name: Install pg_audit for Ubuntu
   package:
     name:
-      - "pgauditlogtofile-{{ postgresql_version | replace('.', '') }}"
+      - "postgresql-{{ postgresql_version }}-pgaudit"
+  when: ansible_distribution == "Ubuntu"
+
+- name: Install pg_audit for Redhat
+  package:
+    name:
+      #- "pgauditlogtofile-{{ postgresql_version | replace('.', '') }}"
+      - "{{ postgresql_pgaudit_redhat_package }}"
+  when: ansible_os_family == "RedHat"
+
 
 - name: Set Postgres config options pg_audit
   template:
@@ -10,6 +20,7 @@
     dest: "{{ postgresql_conf_dir }}/conf.d/28ansible_pg_audit.conf"
     owner: "{{ postgresql_user_name }}"
     group: "{{ postgresql_user_name }}"
+    mode: 0640
     backup: yes
   when: pg_audit_postgres_conf is defined
   notify: Restart PostgreSQL

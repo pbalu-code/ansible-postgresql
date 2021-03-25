@@ -1,3 +1,4 @@
+# postgres/tasks/databases.yml
 ---
 - name: Ensure database is created
   become: true
@@ -13,12 +14,10 @@
   loop: "{{ postgresql_dbs }}"
   when:
     - postgresql_dbs is defined
-    - not init_replication
+    - not postgresql_init_replication
   no_log: true
   notify: Reload PostgreSQL
 
 - name: Force all notified handlers to run at this point, not waiting for normal sync points
   meta: flush_handlers
-#  ignore_errors: "{{ init_replication | default(omit) }}"
-
-
+#  ignore_errors: "{{ postgresql_init_replication | default(omit) }}"

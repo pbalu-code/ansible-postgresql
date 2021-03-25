@@ -1,19 +1,36 @@
 ansible-postgresql
 ===========
-Ansible role to install postgresql server on Centos/Redhat 7 - 8 , ( Soon: Ubuntu 18.04 ).
+Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-20
 
-Tested:
-- Redhat7
-- Redhat8
+###Tested:
 - Centos7
 - Centos8 
+- Ubuntu18
+- Ubuntu20
+
+###PostgreSQL:
+- 9.6
+- 10
+- 11
+- 12
+- 13
+
+###Replication tested:  
+**Postgresql: 12, 13**
+
+###Test enivonment:
+**molecule:**
+- vagrant: (Centos7-8, Ubuntu18-20)
+- docker: Centos8
 
 Extra features
 --------------
  - ssl
+ - postgis  
  - pg_rman
  - pg_audit
  - replication
+
 
 About
 --------
@@ -36,7 +53,10 @@ operation, but options that require a full restart will not cause the server to 
 Requirements
 ------------
 
-This role requires Ansible 2.9+
+- This role requires Ansible 2.9+
+
+- The language settings should be correct, LANG, LC_* variables should be defined!!
+
 
 Role Variables
 --------------
@@ -47,10 +67,6 @@ Role Variables
 
 - `postgresql_version`: PostgreSQL version to install. On Debian-based platforms, the default is whatever version is
   pointed to by the `postgresql` metapackage). On RedHat-based platforms, the default is `10`.
-
-
-- ___Soon:___ _`postgresql_flavor`: On Debian-based platforms, this specifies whether you want to use PostgreSQL packages from pgdg
-  or the distribution's apt repositories. Possible values: `apt`, `pgdg` (default: `apt`)._ {: .gitlab-purple}
   
 - `postgresql_conf`: A list of hashes (dictionaries) of `postgresql.conf` options (keys) and values. These options are
   not added to `postgresql.conf` directly - the role adds a `conf.d` subdirectory in the configuration directory and an
@@ -71,9 +87,9 @@ Role Variables
     - password_encryption: scram-sha-256
     - hot_standby: "on"
     - ssl: "on"
-    - ssl_ca_file: "'{{ pg_ssl_ca }}'"
-    - ssl_cert_file: "'{{ pg_ssl_cert }}'"
-    - ssl_key_file: "'{{ pg_ssl_key }}'"
+    - ssl_ca_file: "'{{ postgresql_ssl_ca }}'"
+    - ssl_cert_file: "'{{ postgresql_ssl_crt }}'"
+    - ssl_key_file: "'{{ postgresql_ssl_key }}'"
     - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
     - ssl_prefer_server_ciphers: "on"
     - ssl_min_protocol_version: 'TLSv1.1'
@@ -141,20 +157,29 @@ Role Variables
 
    Note that "password" sends passwords in clear text; "md5" or scram-sha-256" are preferred since they send encrypted passwords.
 
-- `installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.  
+- `postgresql_installpostgis`: `true/false` Optional parameter if you want to install postgis extension, you can enable this option.  
 
-- `posgis_to_install`: `postgis25_12` Declare which version of postgis to be installed.  
+- `postgresql_posgis_to_install`: `postgis25_12` Declare which version of postgis to be installed.
+- `postgresql_posgis_to_install_ubuntu` (string or list): `postgresql-12-postgis-2.5, postgresql-12-postgis-scripts`  Declare which version of postgis to be installed under Ubuntu.
+  [Compatibility matrix](https://trac.osgeo.org/postgis/wiki/UsersWikiPostgreSQLPostGIS)
 
-- `use_ssl`: boolean This option is turning on/off managing ssl keys transfer. 
-
+- `postgresql_use_ssl`: boolean This option is turning on/off managing ssl keys transfer. 
     __SSL keys and certs must be placed in inventory_dir/files__  
-    For example ..../staging/files/
-- `pg_ssl_key`: pgstandby.key
-
-- `pg_ssl_cert`: pgstandby.crt
-
-- `pg_ssl_ca`: root.crt
-
+    For example ..../staging/files/  
+  [PostgreSQL SSL runtme configuration](https://www.postgresql.org/docs/12/runtime-config-connection.html#RUNTIME-CONFIG-CONNECTION-SSL)
+  
+- `postgresql_ssl_curve` (string): `secp384r1` Type of the curve for ssl key generation  
+- `postgresql_ssl_cipher` (string): `auto` SSL cipher algorithm for key generation   
+- `postgresql_ssl_size` (number): `4096` SSL Key size (selfsigned)  
+- `postgresql_ssl_type` (string): `RSA` SSL key algorithm  # DSA  ECC  Ed25519  Ed448  RSA   X25519  X448  
+- `postgresql_ssl_key` (string): **`postgresql-key.pem`**  SSL key file's name. This file will be generated or will be copied from the files folder under the inventory's path if it exists. 
+- `postgresql_ssl_ca` (string): `postgresql-CA.pem` SSL CA file's name. This file will be generated or will be copied from the files folder under the inventory's path if it exists.
+- **`postgresql_ssl_crt`** (string): **`postgresql-ssl.pem`**  SSL cert's name. This file will be generated or will be copied from the files folder under the inventory's path, if it exists. **In this case the selfsigned key and certificate generation will be skipped and the external files will are copied.**
+- `postgresql_ssl_common_name` (string): `"pgsql.local"` Common name for SSL cert. (Defalt: invetory_hostname)  
+- `postgresql_ssl_alt_name` (list): See the modul's manual "subject alt name" for self signe SSL cert. 
+- `postgresql_ssl_organization_name` (string): `"The Big One Organisation Ltd."` Organisation name for SSL cert. 
+- `postgresql_ssl_organization_unit_name` (string):`"IT - Who else"` SSL cert - Organisation Unit's name. 
+- `postgresql_ssl_DH_size` (number): `2048`  Optional - The size of the Diffie-Hellman Parameters (Default: 4096)
 - `postgresql_pgdata`: Only set this if you have changed the `$PGDATA` directory from the package default. Note this
   does not configure PostgreSQL to actually use a different directory, you will need to do that yourself, it just allows
   the role to properly locate the directory.
@@ -208,32 +233,35 @@ The authentication is trust / IP based.
 
 Replication related variables:
 
-- `pg_standby_slot_name`: string, what should be the name of the replication stream. This is a host related variable. Use it in host variable! 
-- `init_replication`: boolean Sync standby server to the master by pg_basebackup method. __If the standby.signal file is not present.__ 
-- `replication_master`: ip/hostname. Will it use during pg_basebackup
+- `postgresql_standby_slot_name`: string, what should be the name of the replication stream. This is a host related variable. Use it in host variable! 
+- `postgresql_init_replication`: boolean Sync standby server to the master by pg_basebackup method. __If the standby.signal file is not present.__ 
+- `postgresql_replication_master`: ip/hostname. Will it use during pg_basebackup
  
 pg_rman
 ----------------
 _https://github.com/ossc-db/pg_rman_
 
 Variables:
- - `install_pg_rman`: `False/True` Turn on pg_rman installation (RPM source, Centos / Rhel 7-8 only)
- - `pg_rman_backup_folder`: `/var/lib/pgsql/12/backups` Where will backups saved.
- - `pg_rman_install_from_source`: `True/False` pg_rman is available in rpm and in source from github. `False: rpm will be installed.`, `True: The source will be cloned from the github and compiled.` In this case, all necessary devel packages git, make, zlib, ect. will be installed too.
- - `pg_rman_git_repo`: `https://github.com/ossc-db/pg_rman.git` pg_rman source repo. There should be branches like: REL9_3_STABLE, 
+ - `postgresql_install_pg_rman`: `False/True` Turn on pg_rman installation (RPM source, Centos / Rhel 7-8 only)
+ - `postgresql_pg_rman_install_from_source`: `True/False` pg_rman is available in rpm and in source from github. `False: rpm will be installed.`, `True: The source will be cloned from the github and compiled.` In this case, all necessary devel packages git, make, zlib, ect. will be installed too.
+ - `postgresql_pg_rman_git_repo`: `https://github.com/ossc-db/pg_rman.git` pg_rman source repo. There should be branches like: REL9_3_STABLE, 
 REL_12_STABLE, ect.
  - `pg_rman_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/26ansible_pg_rman.conf` 
- - `pg_rman_ini`: `{dict}`  Configuration parameters for pg_rman.ini "- {option: COMPRESS_DATA, value: 'True'}"
+ - `postgresql_pg_rman_ini`: `{dict}`  Configuration parameters for pg_rman.ini "- {option: COMPRESS_DATA, value: 'True'}"
+
+Backups will be saved under postgres home folder/postgresql-version/backups ( {{ postgresql_home }}/{{ postgresql_version }}/backups" )  
+
+For example: `/var/lib/pgsql/12/backups` Under Centos/RedHat  
 
 pg_audit
 ----------------
 _https://www.pgaudit.org/_
 
 Variables:
- - `install_pg_audit`: `True/False`
+ - `postgresql_install_pg_audit`: `True/False`
  - `pg_audit_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/28ansible_pg_audit.conf` 
 
-The role does install pgaudit and pgaudittofile packages.
+The role does install pgaudit packages.
 
 Example Playbook
 ----------------
@@ -268,10 +296,10 @@ Use the PostgreSQL 9.6 packages and set some `postgresql.conf` options and `pg_h
   remote_user: root
   vars:
     postgresql_version: 12
-    use_ssl: true
-    pg_ssl_key: pgmaster.key
-    pg_ssl_cert: pgmaster.crt
-    pg_ssl_ca: root.crt
+    postgresql_use_ssl: true
+    postgresql_pg_ssl_key: pgmaster.key
+    postgresql_pg_ssl_cert: pgmaster.crt
+    postgresql_pg_ssl_ca: root.crt
     postgresql_conf:
       - listen_addresses: "'0.0.0.0'"
       - max_connections: 200       # decrease connection limit
@@ -279,9 +307,9 @@ Use the PostgreSQL 9.6 packages and set some `postgresql.conf` options and `pg_h
       - max_wal_senders: 5         #Replication specific parameters
       - max_replication_slots: 5
       - ssl: "on"
-      - ssl_ca_file: "'{{ pg_ssl_ca }}'"
-      - ssl_cert_file: "'{{ pg_ssl_cert }}'"
-      - ssl_key_file: "'{{ pg_ssl_key }}'"
+      - ssl_ca_file: "'{{ postgresql_pg_ssl_ca }}'"
+      - ssl_cert_file: "'{{ postgresql_pg_ssl_cert }}'"
+      - ssl_key_file: "'{{ postgresql_pg_ssl_key }}'"
       - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
       - ssl_prefer_server_ciphers: "on"
       - ssl_min_protocol_version: 'TLSv1.1'
@@ -297,6 +325,18 @@ Use the PostgreSQL 9.6 packages and set some `postgresql.conf` options and `pg_h
   roles:
     - postgresql
 ```
+
+###pg_dba.conf
+https://www.postgresql.org/docs/9.1/auth-pg-hba-conf.html  
+
+local  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+host  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; address &nbsp;&nbsp;&nbsp;&nbsp; auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+hostssl &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; address &nbsp;&nbsp;&nbsp;&nbsp; auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+hostnossl &nbsp;&nbsp;&nbsp;&nbsp; database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; address &nbsp;&nbsp;&nbsp;&nbsp; auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+host   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; IP-address &nbsp;&nbsp;&nbsp;&nbsp; IP-mask  auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+hostssl  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; IP-address &nbsp;&nbsp;&nbsp;&nbsp; IP-mask  auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+hostnossl  &nbsp;&nbsp;&nbsp;&nbsp;database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; IP-address &nbsp;&nbsp;&nbsp;&nbsp; IP-mask  auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+
 
 Create database (__Recommended to set__)
 
@@ -326,17 +366,15 @@ pg_rman_postgres_conf:
   - wal_init_zero: on
   - wal_level: replica
   - archive_mode: on
-  - archive_command: "'test ! -f /var/lib/pgsql/{{ postgresql_version }}/arclog/%f && cp %p /var/lib/pgsql/{{ postgresql_version }}/arclog/%f'"
-
+  - archive_command: "'test ! -f {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f \
+      && cp %p {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f'"
 ```
 pg_rman.ini (default configuration.) It is extendable. 
 ```yaml
-pg_rman_ini:
+postgresql_pg_rman_ini:
   - option: COMPRESS_DATA
     value: "True"
 ```
-
-
 
 pg_audit
 

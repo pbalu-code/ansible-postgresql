@@ -1,3 +1,4 @@
+# postgres/tasks/users.yml
 ---
 - name: Ensure user has got access to the database
   become: true
@@ -13,7 +14,7 @@
   no_log: true
   when:
     - postgresql_dbs is defined
-    - not init_replication
+    - not postgresql_init_replication
   notify: Reload PostgreSQL
 
 
@@ -28,7 +29,7 @@
   no_log: true
   when:
     - postgresql_dbs is defined
-    - not init_replication
+    - not postgresql_init_replication
   notify: Reload PostgreSQL
 
 - name: Create global users
@@ -44,7 +45,7 @@
   no_log: true
   when:
     - postgresql_global_users is defined
-    - not init_replication
+    - not postgresql_init_replication
   notify: Reload PostgreSQL
 
 - name: Force all notified handlers to run at this point, not waiting for normal sync points
