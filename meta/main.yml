@@ -17,7 +17,7 @@ galaxy_info:
   # - GPL-3.0-only
   # - Apache-2.0
   # - CC-BY-4.0
-  license: GPL
+  license: MIT
 
   min_ansible_version: 2.9
 
@@ -40,9 +40,6 @@ galaxy_info:
       versions:
         - bionic
         - focal
-    - name: Debian
-      versions:
-        - all
 
   galaxy_tags:
     - sq
