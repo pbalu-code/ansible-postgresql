@@ -177,7 +177,6 @@ Role Variables
   [PostgreSQL SSL runtme configuration](https://www.postgresql.org/docs/12/runtime-config-connection.html#RUNTIME-CONFIG-CONNECTION-SSL)
   
 - `postgresql_ssl_curve` (string): `secp384r1` Type of the curve for ssl key generation  
-- `postgresql_ssl_cipher` (string): `auto` SSL cipher algorithm for key generation   
 - `postgresql_ssl_size` (number): `4096` SSL Key size (selfsigned)  
 - `postgresql_ssl_type` (string): `RSA` SSL key algorithm  # DSA  ECC  Ed25519  Ed448  RSA   X25519  X448  
 - `postgresql_ssl_key` (string): **`postgresql-key.pem`**  SSL key file's name. This file will be generated or will be copied from the files folder under the inventory's path if it exists. 
@@ -294,24 +293,28 @@ Use the PostgreSQL 13 packages and set some `postgresql.conf` options and `pg_hb
   vars:
     postgresql_version: 13
     postgresql_use_ssl: true
-    postgresql_pg_ssl_key: pgmaster.key
-    postgresql_pg_ssl_cert: pgmaster.crt
-    postgresql_pg_ssl_ca: root.crt
-    postgresql_ssl_dh: postgres_dh.crt
+    postgresql_ssl_key: postgres.key
+    postgresql_ssl_crt: postgres.crt
+    postgresql_ssl_dh: postgres_dh.crt  # not exists in 9.6
+    postgresql_ssl_ca: root.crt
+    postgresql_ssl_DH_size: 2048
+    postgresql_network_password_mode: 'scram-sha-256'
     postgresql_conf:
       - listen_addresses: "'0.0.0.0'"
-      - max_connections: 200       # decrease connection limit
-      - password_encryption: scram-sha-256
-      - max_wal_senders: 5         #Replication specific parameters
+      - max_connections: '200'       # decrease connection limit
+      - password_encryption: 'scram-sha-256'
+      - max_wal_senders: 5
       - max_replication_slots: 5
       - ssl: "on"
-      - ssl_ca_file: "'{{ postgresql_pg_ssl_ca }}'"
-      - ssl_cert_file: "'{{ postgresql_pg_ssl_cert }}'"
-      - ssl_key_file: "'{{ postgresql_pg_ssl_key }}'"
+      - ssl_ca_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_ca }}'"
+      - ssl_cert_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_crt }}'"
+      - ssl_key_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_key }}'"
       - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
+      # ssl_dh_params_file - not exists in 9.6, 10(Centos)
+      - ssl_dh_params_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_dh }}'"
       - ssl_prefer_server_ciphers: "on"
-      - ssl_min_protocol_version: 'TLSv1.1'
-      - ssl_max_protocol_version: 'TLSv1.2'
+      - ssl_min_protocol_version: 'TLSv1.1'  # not exists in 9.6
+      - ssl_max_protocol_version: 'TLSv1.2'  # not exists in 9.6
       - log_destination: "'syslog'"
       - log_filename: "'postgresql-%a.log'"
       - syslog_facility: "'LOCAL0'"

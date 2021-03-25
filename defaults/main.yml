@@ -43,7 +43,6 @@ postgresql_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
 
 ## For self signed key ####
 postgresql_ssl_curve: secp384r1
-postgresql_ssl_cipher: auto
 postgresql_ssl_size: 4096
 postgresql_ssl_type: RSA  # DSA  ECC  Ed25519  Ed448  RSA   X25519  X448
 postgresql_ssl_key: postgresql-ssl-key.pem
