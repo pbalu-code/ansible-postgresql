@@ -4,7 +4,7 @@
 
 {% if postgresql_pg_hba_local_socket is not defined or postgresql_pg_hba_local_socket %}
 # "local" is for Unix domain socket connections only
-local   all             postgres                                     ident
+local   all             postgres                                     peer
 {% endif %}
 {% if postgresql_pg_hba_local_ipv4 is not defined or postgresql_pg_hba_local_ipv4 %}
 # IPv4 local connections:

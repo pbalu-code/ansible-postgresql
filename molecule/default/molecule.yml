@@ -68,7 +68,7 @@ provisioner:
   inventory:
     group_vars:
       postgres:
-        postgresql_version: 13
+        #postgresql_version: 13
         # postgresql_posgis_to_install: postgis24_96
         # postgresql_posgis_to_install_ubuntu:
         #   - postgresql-9.6-postgis-2.5
@@ -80,7 +80,7 @@ provisioner:
         postgresql_ssl_dh: postgres_dh.crt  # not exists in 9.6
         postgresql_ssl_ca: root.crt
         postgresql_ssl_DH_size: 2048
-        #postgresql_install_postgis: true
+        postgresql_install_postgis: true
         postgresql_network_password_mode: 'scram-sha-256'
         postgresql_conf:
           - listen_addresses: "'0.0.0.0'"
@@ -127,13 +127,13 @@ provisioner:
         #    locale: en_US.UTF-8
         #    lc_collate: en_US.UTF-8
 
-        #postgresql_install_pg_audit: true
+        postgresql_install_pg_audit: true
         postgresql_pg_audit_postgres_conf:
           - pgaudit.log: "'role, misc_set'"
           - pgaudit.log_level: "'error'"
           - shared_preload_libraries: "'pgaudit, pg_stat_statements'"
 
-        #postgresql_install_pg_rman: true
+        postgresql_install_pg_rman: true
         postgresql_pg_rman_postgres_conf:
           - wal_init_zero: on
           - wal_level: replica

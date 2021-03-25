@@ -65,8 +65,7 @@ Role Variables
 
 - `postgresql_user_name`: System username to be used for PostgreSQL (default: `postgres`).
 
-- `postgresql_version`: PostgreSQL version to install. On Debian-based platforms, the default is whatever version is
-  pointed to by the `postgresql` metapackage). On RedHat-based platforms, the default is `10`.
+- `postgresql_version`: PostgreSQL version to install.The default is `12`.
   
 - `postgresql_conf`: A list of hashes (dictionaries) of `postgresql.conf` options (keys) and values. These options are
   not added to `postgresql.conf` directly - the role adds a `conf.d` subdirectory in the configuration directory and an
@@ -80,20 +79,27 @@ Role Variables
 
   ```yaml
   postgresql_conf:
-    - max_connections: 250
-    - archive_mode: "off"
-    - work_mem: "'8MB'"
-    - listen_addresses: "'0.0.0.0'"
-    - password_encryption: scram-sha-256
-    - hot_standby: "on"
-    - ssl: "on"
-    - ssl_ca_file: "'{{ postgresql_ssl_ca }}'"
-    - ssl_cert_file: "'{{ postgresql_ssl_crt }}'"
-    - ssl_key_file: "'{{ postgresql_ssl_key }}'"
-    - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
-    - ssl_prefer_server_ciphers: "on"
-    - ssl_min_protocol_version: 'TLSv1.1'
-    - ssl_max_protocol_version: 'TLSv1.2'
+      - listen_addresses: "'0.0.0.0'"
+      - max_connections: '200'       # decrease connection limit
+      - password_encryption: 'scram-sha-256'
+      - max_wal_senders: 5
+      - max_replication_slots: 5
+      - ssl: "on"
+      - ssl_ca_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_ca }}'"
+      - ssl_cert_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_crt }}'"
+      - ssl_key_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_key }}'"
+      - ssl_ciphers: "'HIGH:MEDIUM:+3DES:!aNULL'"
+      # ssl_dh_params_file - not exists in 9.6, 10(Centos)
+      - ssl_dh_params_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_dh }}'"
+      - ssl_prefer_server_ciphers: "on"
+      - ssl_min_protocol_version: 'TLSv1.1'  # not exists in 9.6
+      - ssl_max_protocol_version: 'TLSv1.2'  # not exists in 9.6
+      - log_destination: "'syslog'"
+      - log_filename: "'postgresql-%a.log'"
+      - syslog_facility: "'LOCAL0'"
+      - syslog_ident: "'postgres'"
+      - syslog_sequence_numbers: on
+      - syslog_split_messages: on
   ```
 
   Becomes the following in `25ansible_postgresql.conf`:
@@ -106,10 +112,11 @@ Role Variables
     max_wal_senders = 5
     max_replication_slots = 5
     ssl = on
-    ssl_ca_file = 'root.crt'
-    ssl_cert_file = 'pgmaster.crt'
-    ssl_key_file = 'pgmaster.key'
+    ssl_ca_file = '/var/lib/pgsql/13/data/root.crt'
+    ssl_cert_file = '/var/lib/pgsql/13/data/postgres.crt'
+    ssl_key_file = '/var/lib/pgsql/13/data/postgres.key'
     ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL'
+    ssl_dh_params_file = '/var/lib/pgsql/13/data/postgres_dh.crt'
     ssl_prefer_server_ciphers = on
     ssl_min_protocol_version = TLSv1.1
     ssl_max_protocol_version = TLSv1.2
@@ -119,6 +126,7 @@ Role Variables
     syslog_ident = 'postgres'
     syslog_sequence_numbers = True
     syslog_split_messages = True
+
 
   ```
 
@@ -174,7 +182,7 @@ Role Variables
 - `postgresql_ssl_type` (string): `RSA` SSL key algorithm  # DSA  ECC  Ed25519  Ed448  RSA   X25519  X448  
 - `postgresql_ssl_key` (string): **`postgresql-key.pem`**  SSL key file's name. This file will be generated or will be copied from the files folder under the inventory's path if it exists. 
 - `postgresql_ssl_ca` (string): `postgresql-CA.pem` SSL CA file's name. This file will be generated or will be copied from the files folder under the inventory's path if it exists.
-- **`postgresql_ssl_crt`** (string): **`postgresql-ssl.pem`**  SSL cert's name. This file will be generated or will be copied from the files folder under the inventory's path, if it exists. **In this case the selfsigned key and certificate generation will be skipped and the external files will are copied.**
+- **`postgresql_ssl_crt`** (string): **`postgresql-ssl.pem`**  SSL cert's name. This file will be generated or will be copied from the files folder under the inventory's path, if it exists. **In this case the selfsigned key and certificate generation will be skipped and the external files will be copied.**
 - `postgresql_ssl_common_name` (string): `"pgsql.local"` Common name for SSL cert. (Defalt: invetory_hostname)  
 - `postgresql_ssl_alt_name` (list): See the modul's manual "subject alt name" for self signe SSL cert. 
 - `postgresql_ssl_organization_name` (string): `"The Big One Organisation Ltd."` Organisation name for SSL cert. 
@@ -225,7 +233,7 @@ If you want to move the database back to the default tablespace, explicitly set 
 
 Replication
 ---------------
-Tested with PostgreSQL 12
+Tested with PostgreSQL 12, 13
 
 This role is able to create asyncron streaming replication too.
 Access rights and the config should be created by config options like postgresql_conf, postgresql_pg_hba_conf ect.  
@@ -246,7 +254,7 @@ Variables:
  - `postgresql_pg_rman_install_from_source`: `True/False` pg_rman is available in rpm and in source from github. `False: rpm will be installed.`, `True: The source will be cloned from the github and compiled.` In this case, all necessary devel packages git, make, zlib, ect. will be installed too.
  - `postgresql_pg_rman_git_repo`: `https://github.com/ossc-db/pg_rman.git` pg_rman source repo. There should be branches like: REL9_3_STABLE, 
 REL_12_STABLE, ect.
- - `pg_rman_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/26ansible_pg_rman.conf` 
+ - `postgresql_pg_rman_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/26ansible_pg_rman.conf` 
  - `postgresql_pg_rman_ini`: `{dict}`  Configuration parameters for pg_rman.ini "- {option: COMPRESS_DATA, value: 'True'}"
 
 Backups will be saved under postgres home folder/postgresql-version/backups ( {{ postgresql_home }}/{{ postgresql_version }}/backups" )  
@@ -259,7 +267,7 @@ _https://www.pgaudit.org/_
 
 Variables:
  - `postgresql_install_pg_audit`: `True/False`
- - `pg_audit_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/28ansible_pg_audit.conf` 
+ - `postgresql_pg_audit_postgres_conf`: `[list]` pg_rman specific postgres config parameters. These are go into `conf.d/28ansible_pg_audit.conf` 
 
 The role does install pgaudit packages.
 
@@ -276,30 +284,20 @@ Standard install: Default `postgresql.conf`, `pg_hba.conf` and default version f
     - ansible-postgresql
 ```
 
-Use the pgdg packages on a Debian-based host (Not yet):
+
+Use the PostgreSQL 13 packages and set some `postgresql.conf` options and `pg_hba.conf` entries:
 
 ```yaml
 ---
 - hosts: dbservers
   remote_user: root
   vars:
-    postgresql_flavor: pgdg
-  roles:
-    - postgresql
-```
-
-Use the PostgreSQL 9.6 packages and set some `postgresql.conf` options and `pg_hba.conf` entries:
-
-```yaml
----
-- hosts: dbservers
-  remote_user: root
-  vars:
-    postgresql_version: 12
+    postgresql_version: 13
     postgresql_use_ssl: true
     postgresql_pg_ssl_key: pgmaster.key
     postgresql_pg_ssl_cert: pgmaster.crt
     postgresql_pg_ssl_ca: root.crt
+    postgresql_ssl_dh: postgres_dh.crt
     postgresql_conf:
       - listen_addresses: "'0.0.0.0'"
       - max_connections: 200       # decrease connection limit
@@ -326,8 +324,8 @@ Use the PostgreSQL 9.6 packages and set some `postgresql.conf` options and `pg_h
     - postgresql
 ```
 
-###pg_dba.conf
-https://www.postgresql.org/docs/9.1/auth-pg-hba-conf.html  
+###pg_hba.conf
+https://www.postgresql.org/docs/13/auth-pg-hba-conf.html 
 
 local  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
 host  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; address &nbsp;&nbsp;&nbsp;&nbsp; auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
@@ -336,7 +334,9 @@ hostnossl &nbsp;&nbsp;&nbsp;&nbsp; database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;
 host   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; IP-address &nbsp;&nbsp;&nbsp;&nbsp; IP-mask  auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
 hostssl  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; IP-address &nbsp;&nbsp;&nbsp;&nbsp; IP-mask  auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
 hostnossl  &nbsp;&nbsp;&nbsp;&nbsp;database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; IP-address &nbsp;&nbsp;&nbsp;&nbsp; IP-mask  auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
+.....
 
+There are a lot new option in version 13: hostnossl, hostgsenc, ect.
 
 Create database (__Recommended to set__)
 
@@ -362,7 +362,7 @@ postgresql_global_users:
 pg_rman config
 
 ```yaml
-pg_rman_postgres_conf:
+postgresql_pg_rman_postgres_conf:
   - wal_init_zero: on
   - wal_level: replica
   - archive_mode: on
@@ -379,7 +379,7 @@ postgresql_pg_rman_ini:
 pg_audit
 
 ```yaml
-pg_audit_postgres_conf:
+postgresql_pg_audit_postgres_conf:
   - pgaudit.log: "'role, misc_set'"
   - pgaudit.log_level: "'error'"
 ```

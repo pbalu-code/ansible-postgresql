@@ -13,7 +13,7 @@
     group: "{{ postgresql_user_name }}"
     mode: 0640
     backup: yes
-  when: pg_rman_postgres_conf is defined
+  when: postgresql_pg_rman_postgres_conf is defined
   notify: Restart PostgreSQL
 
 - block:

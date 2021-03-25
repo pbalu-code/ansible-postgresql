@@ -22,5 +22,5 @@
     group: "{{ postgresql_user_name }}"
     mode: 0640
     backup: yes
-  when: pg_audit_postgres_conf is defined
+  when: postgresql_pg_audit_postgres_conf is defined
   notify: Restart PostgreSQL
