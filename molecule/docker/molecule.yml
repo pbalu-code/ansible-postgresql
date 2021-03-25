@@ -44,10 +44,6 @@ provisioner:
     group_vars:
       postgres:
         postgresql_use_ssl: true
-        postgresql_ssl_key: postgres.key
-        postgresql_ssl_crt: postgres.crt
-        postgresql_ssl_dh: postgres_dh.crt  # not exists in 9.6
-        postgresql_ssl_ca: root.crt
         postgresql_ssl_DH_size: 2048
         postgresql_install_postgis: true
         postgresql_network_password_mode: 'scram-sha-256'
@@ -55,8 +51,8 @@ provisioner:
           - listen_addresses: "'0.0.0.0'"
           - max_connections: '200'       # decrease connection limit
           - password_encryption: 'scram-sha-256'
-          - max_wal_senders: 5
-          - max_replication_slots: 5
+          #- max_wal_senders: 5
+          #- max_replication_slots: 5
           - ssl: "on"
           - ssl_ca_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_ca }}'"
           - ssl_cert_file: "'{{ postgresql_conf_dir }}/{{ postgresql_ssl_crt }}'"
@@ -80,13 +76,13 @@ provisioner:
             role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,INHERIT,LOGIN,REPLICATION"
 
         postgresql_pg_hba_conf:
-          #- "hostssl	replication		replicator		0.0.0.0/0		trust"
-          - "host	replication		replicator		0.0.0.0/0		trust"
-          #- "host	replication		replicator		0.0.0.0/0		scram-sha-256"
+          #  - "hostssl	replication		replicator		0.0.0.0/0		trust"
+          #  - "host	replication		replicator		0.0.0.0/0		trust"
+          #  - "host	replication		replicator		0.0.0.0/0		scram-sha-256"
           - "hostssl	demo		bull		0.0.0.0/0		scram-sha-256"
           - "host   	demo		bull		0.0.0.0/0		scram-sha-256"
-        #  - "hostssl	demo		bull		0.0.0.0/0		md5"
-        #  - "host   	demo		bull		0.0.0.0/0		md5"
+          #  - "hostssl	demo		bull		0.0.0.0/0		md5"
+          #  - "host   	demo		bull		0.0.0.0/0		md5"
 
         postgresql_dbs:
           - name: "demo"
