@@ -11,8 +11,24 @@ postgresql_pg_rman_git_repo: https://github.com/ossc-db/pg_rman.git
 postgresql_pg_rman_ini:
   - option: COMPRESS_DATA
     value: "True"
+
+postgresql_pg_rman_postgres_conf:
+  - wal_init_zero: on
+  - wal_level: replica
+  - archive_mode: on
+  - archive_command: "'test ! -f {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f \
+    && cp %p {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f'"
+
 postgresql_install_pg_audit: false
 postgresql_pgaudit_redhat_package: pgaudit14_12
+postgresql_pg_audit_postgres_conf:
+  - pgaudit.log: "'-misc'"
+  - log_connections: on
+  - log_disconnections: on
+  - log_line_prefix: "'<%m:%r:%u@%d:[%p]:>'"
+  - log_statement: all
+  - shared_preload_libraries: pgaudit
+
 #pgaudit10_95.x86_64
 #pgaudit11_96.x86_64
 #pgaudit12_10.x86_64

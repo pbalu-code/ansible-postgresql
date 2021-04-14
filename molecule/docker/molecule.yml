@@ -93,18 +93,7 @@ provisioner:
             lc_collate: en_US.UTF-8
 
         postgresql_install_pg_audit: true
-        postgresql_pg_audit_postgres_conf:
-          - pgaudit.log: "'role, misc_set'"
-          - pgaudit.log_level: "'error'"
-          - shared_preload_libraries: "'pgaudit, pg_stat_statements'"
-
         postgresql_install_pg_rman: true
-        postgresql_pg_rman_postgres_conf:
-          - wal_init_zero: on
-          - wal_level: replica
-          - archive_mode: on
-          - archive_command: "'test ! -f {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f \
-            && cp %p {{ postgresql_home }}/{{ postgresql_version }}/arclog/%f'"
 
 verifier:
   #name: ansible
