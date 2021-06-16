@@ -126,7 +126,7 @@
     create: yes
     dest: "{{ postgresql_home }}/.pgsql_profile"
     block: |
-      export BACKUP_PATH="{{ postgresql_home }}/{{ postgresql_version }}/backups"
+      export BACKUP_PATH="{{ postgresql_home }}/{{ postgresql_version }}/backups/rman"
       export PATH=$PATH:{{ postgresql_bin_dir }}
       export PGDATA={{ postgresql_pgdata }}
       export ARCLOG_PATH={{ postgresql_home }}/{{ postgresql_version }}/arclog
@@ -140,9 +140,17 @@
     path: "{{ postgresql_home }}/{{ postgresql_version }}/backups/pg_rman.ini"
   register: postgresql_pg_rman_init
 
+- name: Ensure rman's destination folder exists
+  file:
+    path: "{{ postgresql_home }}/{{ postgresql_version }}/backups/rman"
+    state: directory
+    mode: '0700'
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+
 - name: Init pg_rman
   shell: "{{ postgresql_bin_dir }}/pg_rman init -B \
-  {{ postgresql_home }}/{{ postgresql_version }}/backups -D {{ postgresql_pgdata }}"
+  {{ postgresql_home }}/{{ postgresql_version }}/backups/rman -D {{ postgresql_pgdata }}"
   become_user: "{{ postgresql_user_name }}"
   when: not postgresql_pg_rman_init.stat.exists
 
