@@ -23,7 +23,8 @@ platforms:
     interfaces:
       - network_name: private_network
         type: static
-        ip: "192.168.233.144"
+        ip: 192.168.233.144
+        auto_config: true
   - name: postgres-centos8
     box: "bento/centos-8.3"
     memory: 4096
@@ -32,9 +33,10 @@ platforms:
     interfaces:
       - network_name: private_network
         type: static
-        ip: "192.168.233.145"
+        ip: 192.168.233.145
+        auto_config: true
     options:
-      append_platform_to_hostname: false
+      append_platform_to_hostname: no
   - name: postgres-ubuntu18
     box: ubuntu/bionic64
     groups:
@@ -44,9 +46,10 @@ platforms:
     interfaces:
       - network_name: private_network
         auto_config: true
-        ip: "192.168.233.146"
+        ip: 192.168.233.146
   - name: postgres-ubuntu20
-    box: "generic/ubuntu2004"
+    #box: "generic/ubuntu2004"
+    box: ubuntu/focal64
     groups:
       - postgres
     memory: 4096
@@ -54,7 +57,7 @@ platforms:
     interfaces:
       - network_name: private_network
         auto_config: true
-        ip: "192.168.233.147"
+        ip: 192.168.233.147
 provisioner:
   name: ansible
   config_options:
@@ -68,7 +71,7 @@ provisioner:
   inventory:
     group_vars:
       postgres:
-        #postgresql_version: 13
+        postgresql_version: 14
         # postgresql_posgis_to_install: postgis24_96
         # postgresql_posgis_to_install_ubuntu:
         #   - postgresql-9.6-postgis-2.5
@@ -80,7 +83,7 @@ provisioner:
         postgresql_ssl_dh: postgres_dh.crt  # not exists in 9.6
         postgresql_ssl_ca: root.crt
         postgresql_ssl_DH_size: 2048
-        postgresql_install_postgis: true
+        postgresql_install_postgis: false
         postgresql_network_password_mode: 'scram-sha-256'
         postgresql_conf:
           - listen_addresses: "'0.0.0.0'"
@@ -128,8 +131,9 @@ provisioner:
         #    lc_collate: en_US.UTF-8
 
         postgresql_install_pg_audit: true
+        postgresql_pgaudit_redhat_package: pgaudit16_14
 
-        postgresql_install_pg_rman: true
+        postgresql_install_pg_rman: false
 
     host_vars:
       postgres-centos7:

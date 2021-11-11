@@ -1,8 +1,17 @@
 #postgresql/tasks/ubuntu.yml
 ---
-- name: Ensure apt-add-key present
+- name: Install prerequirements
   apt:
-    name: add-apt-key
+    name:
+    - add-apt-key
+    - locales
+    - ca-certificates
+
+- name: Ensure all locales are exists
+  community.general.locale_gen:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ postgresql_locales }}"
 
 - name: Add an Apt signing key, uses whichever key is at the URL
   ansible.builtin.apt_key:

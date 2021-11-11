@@ -14,9 +14,12 @@ Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-20
 - 11
 - 12
 - 13
+- 14
 
 ###Replication tested:  
-**Postgresql: 12, 13**
+**Postgresql: 12, 13, 14**
+
+### No pg_repack for centos for version 14 of postgresql 
 
 ###Test enivonment:
 **molecule:**
@@ -26,7 +29,7 @@ Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-20
 Extra features
 --------------
  - ssl
- - postgis  
+ - postgis  # broken 
  - pg_rman
  - pg_audit
  - replication
@@ -227,7 +230,9 @@ If you want to move the database back to the default tablespace, explicitly set 
          - [NO]LOGIN
          - [NO]REPLICATION
          - [NO]BYPASSRLS
-    - ssl_mode: __Optional__ see before...
+    - ssl_mode: __Optional__ see before...  
+
+- `postgresql_locales`: (list)  - en_US.UTF-8  Ubuntu/Debian only. Generate locales. 
 
 
 Replication

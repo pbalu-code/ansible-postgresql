@@ -80,6 +80,8 @@ postgresql_ssl_HonorCipherOrder: "on"
 #    locale: en_US.UTF-8
 #    template: 'template0'
 
+postgresql_locales:
+  - en_US.UTF-8
 
 #locale: en_US.UTF-8
 #zone: Europe/Budapest
