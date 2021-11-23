@@ -28,7 +28,6 @@ platforms:
     pre_build_image: true
     port_bindings:
       5432: 54322
-      22: 2222
 
 provisioner:
   name: ansible
@@ -43,6 +42,7 @@ provisioner:
   inventory:
     group_vars:
       postgres:
+        postgresql_version: 14
         postgresql_use_ssl: true
         postgresql_ssl_DH_size: 2048
         postgresql_install_postgis: true
@@ -93,7 +93,11 @@ provisioner:
             lc_collate: en_US.UTF-8
 
         postgresql_install_pg_audit: true
-        postgresql_install_pg_rman: true
+        postgresql_pgaudit_redhat_package: pgaudit16_14
+        postgresql_install_pg_rman: false
+        postgresql_extra_packages:
+         # - "postgresql-plperl-{{ postgresql_version }}"
+          - nfs-utils
 
 verifier:
   #name: ansible

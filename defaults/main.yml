@@ -82,7 +82,7 @@ postgresql_ssl_HonorCipherOrder: "on"
 
 postgresql_locales:
   - en_US.UTF-8
-
+#  - hu_HU.UTF-8
 #locale: en_US.UTF-8
 #zone: Europe/Budapest
 #zoneinfo_path: /usr/share/zoneinfo/Europe/Budapest

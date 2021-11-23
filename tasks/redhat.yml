@@ -22,6 +22,7 @@
     package:
       name: "epel-release"
       state: present
+
   - name: Install Code Ready (RedHat)
     shell:
       cmd: "subscription-manager repos --enable \
@@ -97,7 +98,6 @@
     state: present
   when: postgresql_version is version('14', '<')
 
-
 # posgres_db modul - Failed to import the required Python library (psycopg2)
 - name: install python module for Postgres Redhat 8+
   package:
@@ -123,6 +123,12 @@
       - "{{ ansible_distribution_major_version is version('8', '>=') | \
       ternary('libpq-devel', 'libpq5-devel') }}"
   when: postgresql_version is version('10', '<')
+
+- name: Install extra postgresql packages
+  package:
+    name: "{{ postgresql_extra_packages }}"
+    state: present
+  when: postgresql_extra_packages is defined
 
 - name: Install PostGIS
   package:

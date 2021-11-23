@@ -1,4 +1,4 @@
-ansible-postgresql
+ansible-postgresql v2.1.4
 ===========
 Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-20
 
@@ -59,6 +59,11 @@ Requirements
 - This role requires Ansible 2.9+
 
 - The language settings should be correct, LANG, LC_* variables should be defined!!
+
+Role tags
+--------------
+genlocales - Generate locales ( Ubuntu only )  
+
 
 
 Role Variables
@@ -230,9 +235,10 @@ If you want to move the database back to the default tablespace, explicitly set 
          - [NO]LOGIN
          - [NO]REPLICATION
          - [NO]BYPASSRLS
-    - ssl_mode: __Optional__ see before...  
+    - ssl_mode: __Optional__ see before...
 
 - `postgresql_locales`: (list)  - en_US.UTF-8  Ubuntu/Debian only. Generate locales. 
+- `postgresql_extra_packages`: (list or string ) - Install optional packages.
 
 
 Replication

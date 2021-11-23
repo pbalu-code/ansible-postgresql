@@ -134,12 +134,18 @@ provisioner:
         postgresql_pgaudit_redhat_package: pgaudit16_14
 
         postgresql_install_pg_rman: false
+        postgresql_locales:
+          - en_US.UTF-8
+          - hu_HU.UTF-8
 
     host_vars:
       postgres-centos7:
         postgresql_standby_slot_name: pgstandby1
         postgresql_replication_master: "192.168.233.145"
         postgresql_init_replication: true
+      postgresql_extra_packages:
+        - "postgresql{{ postgresql_version }}-plperl"
+        - nfs-utils
       postgres-centos8:
         postgresql_dbs:
           - name: "demo"
@@ -148,10 +154,16 @@ provisioner:
             encoding: UTF-8
             locale: en_US.UTF-8
             lc_collate: en_US.UTF-8
+      postgresql_extra_packages:
+        - "postgresql{{ postgresql_version }}-plperl"
+        - nfs-utils
       postgres-ubuntu18:
         postgresql_replication_master: "192.168.233.147"
         postgresql_standby_slot_name: pgstandby1
         postgresql_init_replication: true
+        postgresql_extra_packages:
+          - "postgresql-plperl-{{ postgresql_version }}"
+          - nfs-common
       postgres-ubuntu20:
         postgresql_dbs:
           - name: "demo"
@@ -160,6 +172,9 @@ provisioner:
             encoding: UTF-8
             locale: en_US.UTF-8
             lc_collate: en_US.UTF-8
+        postgresql_extra_packages:
+          - "postgresql-plperl-{{ postgresql_version }}"
+          - nfs-common
 verifier:
   #name: ansible
   name: testinfra

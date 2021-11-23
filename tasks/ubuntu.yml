@@ -12,6 +12,8 @@
     name: "{{ item }}"
     state: present
   with_items: "{{ postgresql_locales }}"
+  tags:
+    - genlocales
 
 - name: Add an Apt signing key, uses whichever key is at the URL
   ansible.builtin.apt_key:
@@ -50,6 +52,12 @@
     name: "postgresql-contrib-{{ postgresql_version }}"
     state: present
   when: postgresql_version is version('10', '<')
+
+- name: Install extra postgresql packages
+  package:
+    name: "{{ postgresql_extra_packages }}"
+    state: present
+  when: postgresql_extra_packages is defined
 
 - name: Install PostGIS
   package:
