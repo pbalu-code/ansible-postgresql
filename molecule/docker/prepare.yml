@@ -10,23 +10,32 @@
       cache_valid_time: 24000
     when: ansible_os_family == "Debian"
 
-  - name: Lookup LANG
-    set_fact:
-      locale: "{{ lookup('env', 'LANG') | default('en_US.UTF-8') }}"
+#  - name: Lookup LANG
+#    set_fact:
+#      locale: "{{ lookup('env', 'LANG') | default('en_US.UTF-8') }}"
 
-  - name: Install lang tools
-    package:
-      name:
-        - langpacks-en
-        - langpacks-hu
-        - glibc-all-langpacks
+#  - name: Install lang tools Centos
+#    package:
+#      name:
+#        - langpacks-en
+#        - langpacks-hu
+#        - glibc-all-langpacks
+#    when: ansible_os_family == "RedHat"
+#
+#  - name: Install lang tools Debian
+#    package:
+#      name:
+#        - language-pack-hu
+#        - language-pack-eu
+#    when: ansible_os_family == "Debian"
 
-  - name: Ensure set LANGS
-    shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' \
-    LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' \
-    LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' \
-    LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' \
-    LC_MEASUREMENT='{{ locale }}' LC_IDENTIFICATION='{{ locale }}'"
+
+#  - name: Ensure set LANGS
+#    shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' \
+#    LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' \
+#    LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' \
+#    LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' \
+#    LC_MEASUREMENT='{{ locale }}' LC_IDENTIFICATION='{{ locale }}'"
 
   #- name: Reinstall glibc (Hun support)
   #  command: "yum reinstall -y glibc-common"
@@ -62,6 +71,7 @@
       - /etc/nologin
       - /var/run/nologin
 
-  - name: Install full Python
-    package:
-      name: "{{ ansible_distribution_major_version is version('8', '>=') | ternary('python3', 'python') }}"
+#  - name: Install full Python
+#    package:
+#      name:
+#        - "{{ ansible_distribution_major_version is version('8', '>=') | ternary('python3', 'python2') }}"

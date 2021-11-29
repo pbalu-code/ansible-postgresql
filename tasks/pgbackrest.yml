@@ -1,0 +1,50 @@
+#postgresql/tasks/pgbackrest.yml
+---
+- name: Install pgbackrest
+  package:
+    name: pgbackrest
+
+#- name: Create /etc/pgbackrest dir
+#  file:
+#    path: /etc/pgbackrest
+#    state: directory
+#    owner: postgres
+#    group: postgres
+#    mode: '0750'
+
+- name: Create pgbackrest repo folders
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0750'
+  with_items: "{{ postgresql_pgbackrest_repo_dirs }}"
+
+- name: "Create pgbackrest tmp dir ( {{ postgresql_pgbackrest_tmp }} )"
+  file:
+    path: "{{ postgresql_pgbackrest_tmp }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0755'
+
+- name: Create pgbackrest conf
+  template:
+    dest: /etc/pgbackrest.conf
+    src: pgbackrest.conf.j2
+    owner: postgres
+    group: postgres
+    mode: '0640'
+
+- name: get pgbackrest path
+  shell:
+    cmd: which pgbackrest
+  register: pgbackrest_path
+  changed_when: false
+
+- name: Include create stanza tasks
+  include_tasks: stanza.yml
+  with_items: "{{ postgresql_pgbackrest_stanza_names }}"
+  loop_control:
+    loop_var: stanza

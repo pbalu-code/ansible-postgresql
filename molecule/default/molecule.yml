@@ -114,7 +114,7 @@ provisioner:
             role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,INHERIT,LOGIN,REPLICATION"
 
         postgresql_pg_hba_conf:
-          #- "hostssl	replication		replicator		0.0.0.0/0		trust"
+          - "host	all				postgres		127.0.0.0/24    trust"
           - "host	replication		replicator		0.0.0.0/0		trust"
           #- "host	replication		replicator		0.0.0.0/0		scram-sha-256"
           - "hostssl	demo		bull		0.0.0.0/0		scram-sha-256"
@@ -132,20 +132,36 @@ provisioner:
 
         postgresql_install_pg_audit: true
         postgresql_pgaudit_redhat_package: pgaudit16_14
-
         postgresql_install_pg_rman: false
         postgresql_locales:
           - en_US.UTF-8
           - hu_HU.UTF-8
+        postgresql_pgbackrest_tmp: /var/lib/pgbackrest-tmp
+        postgresql_pgbackrest_repo_path: /var/lib/pgbackrest
+        postgresql_pgbackrest_stanza_names:
+          - demo
+        postgresql_pgbackrest_conf:
+          global:
+            - repo1-path: "{{ postgresql_pgbackrest_repo_path }}"
+            - repo1-retention-full: !!str 2
+            - repo1-cipher-pass: 1q5nabo1FjZDOuYA2OkMshCAL0v3hQmFodH+rwjmR9OElkDS8DI/5wX+EFAaTiA4
+            - repo1-cipher-type: aes-256-cbc
+            - lock-path: "{{ postgresql_pgbackrest_tmp }}"
+          global_archive_push:
+            compress-level: !!str 3
+          sections:
+            demo:
+              pg1-path: "{{ postgresql_pgdata_default }}"
+              pg1-port: !!str 5432
 
     host_vars:
       postgres-centos7:
         postgresql_standby_slot_name: pgstandby1
         postgresql_replication_master: "192.168.233.145"
         postgresql_init_replication: true
-      postgresql_extra_packages:
-        - "postgresql{{ postgresql_version }}-plperl"
-        - nfs-utils
+        postgresql_extra_packages:
+          - "postgresql{{ postgresql_version }}-plperl"
+          - nfs-utils
       postgres-centos8:
         postgresql_dbs:
           - name: "demo"
@@ -154,9 +170,9 @@ provisioner:
             encoding: UTF-8
             locale: en_US.UTF-8
             lc_collate: en_US.UTF-8
-      postgresql_extra_packages:
-        - "postgresql{{ postgresql_version }}-plperl"
-        - nfs-utils
+        postgresql_extra_packages:
+          - "postgresql{{ postgresql_version }}-plperl"
+          - nfs-utils
       postgres-ubuntu18:
         postgresql_replication_master: "192.168.233.147"
         postgresql_standby_slot_name: pgstandby1

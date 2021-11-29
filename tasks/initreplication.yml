@@ -45,13 +45,15 @@
 
 
 # for redo conf at standy
-- include_tasks: config.yml
+- name: Include config.yml
+  include_tasks: config.yml
 
 - name: Final replication Check
   stat:
     path: "{{ postgresql_pgdata }}/standby.signal"
   register: standby_signal_ok
 
-- debug:
+- name: Show result
+  debug:
     msg: "The HOT Standby asyncron replication is ready to use."
   when: standby_signal_ok.stat.exists

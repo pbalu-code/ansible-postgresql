@@ -1,0 +1,14 @@
+# postgres/vars/redhat7.yml
+---
+postgresql_pgdata_default: /var/lib/pgsql/{{ postgresql_version }}/data
+postgresql_conf_dir_default: /var/lib/pgsql/{{ postgresql_version }}/data
+postgresql_service_name: postgresql-{{ postgresql_version }}
+postgresql_bin_dir: "/usr/pgsql-{{ postgresql_version }}/bin"
+postgresql_home: /var/lib/pgsql
+
+postgresql_langpacks:
+#  - langpacks-en
+#  - langpacks-hu
+#  - glibc-all-langpacks
+#  - glibc-locale-source
+  - glibc-common

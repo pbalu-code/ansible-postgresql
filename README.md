@@ -1,4 +1,4 @@
-ansible-postgresql v2.1.4
+ansible-postgresql v2.1.0
 ===========
 Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-20
 
@@ -33,6 +33,7 @@ Extra features
  - pg_rman
  - pg_audit
  - replication
+ - pgbackrest
 
 
 About
@@ -62,8 +63,12 @@ Requirements
 
 Role tags
 --------------
-genlocales - Generate locales ( Ubuntu only )  
-
+- genlocales - Generate locales ( Ubuntu only )
+- pgbackrest
+- langsources
+- setlanguages
+- cronjobs
+- cron
 
 
 Role Variables
@@ -270,8 +275,18 @@ REL_12_STABLE, ect.
 Backups will be saved under postgres home folder/postgresql-version/backups ( {{ postgresql_home }}/{{ postgresql_version }}/backups" )  
 
 For example: `/var/lib/pgsql/12/backups` Under Centos/RedHat  
+- `postgresql_cronjobs`: `{dict}` Manage cron jobs. All options of cron module's are supported. [Ansible Cron module](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/cron_module.html)
+- `postgresql_pgbackrest_conf`: `{dict}` Set pgbackrest config. Parameters could be in list or dict too.  
+- `postgresql_default_lang`:`string` default: en_US.UTF-8 If LANG env is not set, the role will set it.
+- `postgresql_locales`: `[list]` default: `- en_US.UTF-8` Under Debian family generate locales.
+- `postgresql_pgbackrest_repo_dirs`:`[list]` default: `- /var/lib/pgbackrest` List of directories to be created for pgbackerst's backups.
+- `postgresql_pgbackrest_tmp`: `string` default: `/var/lib/pgbackrest-tmp` directory for pgbackrest lock file.
+- `postgresql_pgbackrest_repo_path`: `string` default: `/var/lib/pgbackrest` Directory for pgbackrest's backups.
+- `postgresql_pgbackrest_stanza_names`:`[list]` default: `- demo` Stanza names to be check and create.
+- `postgresql_install_pgbackrest`: `boolean` default: `true` Install pgbackrest or not. 
 
-pg_audit
+
+- pg_audit
 ----------------
 _https://www.pgaudit.org/_
 
@@ -397,3 +412,56 @@ postgresql_pg_audit_postgres_conf:
   - pgaudit.log: "'role, misc_set'"
   - pgaudit.log_level: "'error'"
 ```
+
+cronjobs
+
+```yaml
+postgresql_cronjobs:
+  pgbackrest_weekly:
+    job: pgbackrest --type=full --stanza=demo backup
+    minute: !!str 0
+    hour: !!str 2
+    month: "*"
+    weekday: !!str 0
+    user: postgres
+  pgbackrest_daily:
+    job: pgbackrest --type=diff --stanza=demo backup
+    minute: !!str 0
+    hour: !!str 2
+    month: "*"
+    weekday: "1-6"
+    user: postgres
+
+```
+
+pgbackrest conf
+```yaml
+postgresql_pgbackrest_conf:
+  global:
+    - repo1-path: "{{ postgresql_pgbackrest_repo_path }}"
+    - repo1-retention-full: !!str 2
+    - repo1-cipher-pass: 1q5nabo1FjZDOuYA........wX+EFAaTiA4
+    - repo1-cipher-type: aes-256-cbc
+    - lock-path: "{{ postgresql_pgbackrest_tmp }}"
+  global_archive_push:
+    compress-level: !!str 3
+  sections:
+    demo:
+      pg1-path: "{{ postgresql_pgdata_default }}"
+      pg1-port: !!str 5432
+
+```
+
+##Release notes
+_____
+2.1.0:  
+- pgbackrest integration
+- cronjob management
+- updated locale management
+
+2.0.4:
+- optional extra packages option
+- language update
+
+2.0.3:
+- Postgresql 14 compatibility fix/updates

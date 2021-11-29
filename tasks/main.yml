@@ -1,19 +1,51 @@
 # postgres/tasks/main.yml
 ---
-#- name: Include distribution dependent variables
-#  include_vars: "{{ item }}"
-#  with_first_found:
-#    - "{{ ansible_distribution }}.yml"
-#    - "{{ ansible_os_family }}.yml"
-#  tags: postgres
+- name: Include distribution dependent variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_os_family }}-{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
 
-- name: Include vars for Ubuntu
-  include_vars: ubuntu.yml
-  when: ansible_distribution == "Ubuntu"
+- name: Install language files
+  package:
+    name: "{{ postgresql_langpacks }}"
+  tags:
+    - langsources
+    - setlanguages
 
-- name: Include vars for RedHat
-  include_vars: redhat.yml
-  when: ansible_os_family == "RedHat"
+- name: Check LANG env
+  set_fact:
+    current_locale: "{{ lookup('env', 'LANG') | default('notexists') }}"
+  tags:
+    - setlanguages
+
+- name: Lookup LANG
+  set_fact:
+    locale: "{{ lookup('env', 'LANG') | default('en_US.UTF-8') }}"
+  tags:
+    - setlanguages
+
+- name: Ensure all locales are exists
+  community.general.locale_gen:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ postgresql_locales }}"
+  when: ansible_os_family == "Debian"
+  tags:
+    - genlocales
+    - setlanguages
+
+- name: Ensure set LANGS
+  shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' \
+  LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' \
+  LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' \
+  LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' \
+  LC_MEASUREMENT='{{ locale }}' LC_IDENTIFICATION='{{ locale }}'"
+  when: current_locale == 'notexists'
+  tags:
+    - stelanguages
 
 - name: Set conf dir fact
   set_fact:
@@ -77,6 +109,13 @@
   when:
     - postgresql_install_pg_audit
 
+- name: Include pgbackrest's tasks
+  include_tasks: pgbackrest.yml
+  when:
+    - postgresql_install_pgbackrest | default( true )
+  tags:
+    - pgbackrest
+
 - name: Check is replication necessary
   stat:
     path: "{{ postgresql_pgdata }}/standby.signal"
@@ -89,3 +128,35 @@
   when:
     - postgresql_init_replication
     - not standby_signal.stat.exists
+
+- name: Install crontab
+  package:
+    name: "{{ (ansible_os_family == 'RedHat') | ternary('crontabs', 'cron') }}"
+  tags:
+    - cron
+    - cronjobs
+
+# https://docs.ansible.com/ansible/latest/collections/ansible/builtin/cron_module.html
+- name: Set cronjobs
+  ansible.builtin.cron:
+    name: "{{ item.key }}"
+    day: "{{ item.value.day | default(omit) }}"
+    weekday: "{{ item.value.weekday | default(omit) }}"
+    month: "{{ item.value.month | default(omit) }}"
+    minute: "{{ item.value.minute | default(omit) }}"
+    hour: "{{ item.value.hour | default(omit) }}"
+    user: "{{ item.value.user | default(omit) }}"
+    job: "{{ item.value.job | default(omit) }}"
+    cron_file: "{{ item.value.cron_file | default(omit) }}"
+    backup: "{{ item.value.backup | default(omit) }}"
+    disabled: "{{ item.value.disabled | default(omit) }}"
+    env: "{{ item.value.env | default(omit) }}"
+    insertafter: "{{ item.value.insertafter | default(omit) }}"
+    insertbefore: "{{ item.value.insertbefore | default(omit) }}"
+    reboot: "{{ item.value.reboot | default(omit) }}"
+    special_time: "{{ item.value.special_time | default(omit) }}"
+    state: "{{ item.value.state | default(omit) }}"
+  with_dict: "{{ postgresql_cronjobs }}"
+  tags:
+    - cronjobs
+    - cron

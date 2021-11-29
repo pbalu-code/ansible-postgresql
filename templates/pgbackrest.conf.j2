@@ -1,0 +1,66 @@
+## Ansible managed ##
+{% if postgresql_pgbackrest_conf.global is defined %}
+[global]
+{% if postgresql_pgbackrest_conf.global is mapping %}
+{% for opt in postgresql_pgbackrest_conf.global | sort -%}
+{{ opt }} = {{ postgresql_pgbackrest_conf.global[opt] }}
+{% endfor %}
+{% else %}
+{% for pair in postgresql_pgbackrest_conf.global -%}
+{% for key in pair -%}
+{{ key }} = {{ pair[key] }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if postgresql_pgbackrest_conf.global_archive_push is defined %}
+[global:archive-push]
+{% if postgresql_pgbackrest_conf.global_archive_push is mapping %}
+{% for opt in postgresql_pgbackrest_conf.global_archive_push | sort -%}
+{{ opt }} = {{ postgresql_pgbackrest_conf.global_archive_push[opt] }}
+{% endfor %}
+{% else %}
+{% for pair in postgresql_pgbackrest_conf.global_archive_push -%}
+{% for key in pair -%}
+{{ key }} = {{ pair[key] }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if postgresql_pgbackrest_conf.sections is defined %}
+{% if postgresql_pgbackrest_conf.sections is mapping %}
+{%- for section in postgresql_pgbackrest_conf.sections | sort -%}
+[{{ section }}]
+{% if postgresql_pgbackrest_conf.sections[section] is mapping %}
+{%- for opt in postgresql_pgbackrest_conf.sections[section] | sort -%}
+{{ opt }} = {{ postgresql_pgbackrest_conf.sections[section][opt] }}
+{% endfor %}
+{% else %}
+{%- for pair in postgresql_pgbackrest_conf.sections[section] -%}
+{%- for key in pair -%}
+{{ key }} = {{ pair[key] }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% else %}
+{% for ssection in postgresql_pgbackrest_conf.sections -%}
+{% for skey in ssection %}
+[{{ skey }}]
+{% if ssection[skey] is mapping -%}
+{% for sname in ssection[skey] | sort %}
+{{ sname }} = {{ ssection[skey][sname] }}
+{% endfor %}
+{% else %}
+{%- for spair in ssection[skey] -%}
+{%- for sskey in spair -%}
+{{ sskey }} = {{ spair[sskey] }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endif %}

@@ -10,7 +10,29 @@ lint: |
   ansible-lint -v -c molecule/tests/lint.yml .
 
 platforms:
+  - name: postgres-centos7
+    hostname: postgres-centos7
+    network_mode: bridge
+    groups:
+      - postgres
+    image: "geerlingguy/docker-centos7-ansible"
+    image_version: latest
+    privileged: true
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    capabilities:
+      - SYS_ADMIN
+    command: "/lib/systemd/systemd"
+    pre_build_image: true
+    port_bindings:
+      5432: 54323
   - name: postgres-centos8
+    hostname: postgres-centos8
+    network_mode: bridge
     groups:
       - postgres
     image: "geerlingguy/docker-centos8-ansible"
@@ -26,9 +48,48 @@ platforms:
       - SYS_ADMIN
     command: "/lib/systemd/systemd"
     pre_build_image: true
-    port_bindings:
-      5432: 54322
-
+  - name: postgres-ubuntu1804
+    hostname: postgres-ubuntu18
+    network_mode: bridge  # bridge, none, container: foo, host
+  #    published_ports:
+  #      - 8081:80
+    groups:
+      - postgres
+    image: "geerlingguy/docker-ubuntu1804-ansible:latest"
+    privileged: true
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    capabilities:
+      - SYS_ADMIN
+    command: "/lib/systemd/systemd"
+    pre_build_image: true
+    environment:
+      container: docker
+  - name: postgres-ubuntu2004
+    hostname: postgres-ubuntu20
+    network_mode: bridge  # bridge, none, container: foo, host
+  #    published_ports:
+  #      - 8081:80
+    groups:
+      - postgres
+    image: "geerlingguy/docker-ubuntu2004-ansible:latest"
+    privileged: true
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    capabilities:
+      - SYS_ADMIN
+    command: "/lib/systemd/systemd"
+    pre_build_image: true
+    environment:
+      container: docker
 provisioner:
   name: ansible
   config_options:
@@ -76,13 +137,13 @@ provisioner:
             role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,INHERIT,LOGIN,REPLICATION"
 
         postgresql_pg_hba_conf:
-          #  - "hostssl	replication		replicator		0.0.0.0/0		trust"
-          #  - "host	replication		replicator		0.0.0.0/0		trust"
-          #  - "host	replication		replicator		0.0.0.0/0		scram-sha-256"
-          - "hostssl	demo		bull		0.0.0.0/0		scram-sha-256"
+          - "host	all				postgres		127.0.0.0/24    trust"
+          - "host	replication		replicator		0.0.0.0/0		trust"
+          #- "host	replication		replicator		0.0.0.0/0		scram-sha-256"
+        #   - "hostssl	demo		bull		0.0.0.0/0		scram-sha-256"
           - "host   	demo		bull		0.0.0.0/0		scram-sha-256"
-          #  - "hostssl	demo		bull		0.0.0.0/0		md5"
-          #  - "host   	demo		bull		0.0.0.0/0		md5"
+        #  - "hostssl	demo		bull		0.0.0.0/0		md5"
+        #  - "host   	demo		bull		0.0.0.0/0		md5"
 
         postgresql_dbs:
           - name: "demo"
@@ -97,8 +158,22 @@ provisioner:
         postgresql_install_pg_rman: false
         postgresql_extra_packages:
          # - "postgresql-plperl-{{ postgresql_version }}"
-          - nfs-utils
-
+          - vim
+    host_vars:
+      postgres-centos7:
+        postgresql_use_ssl: false
+        postgresql_conf:
+          - listen_addresses: "'0.0.0.0'"
+          - max_connections: '200'       # decrease connection limit
+          - password_encryption: 'scram-sha-256'
+          #- max_wal_senders: 5
+          #- max_replication_slots: 5
+          - log_destination: "'syslog'"
+          - log_filename: "'postgresql-%a.log'"
+          - syslog_facility: "'LOCAL0'"
+          - syslog_ident: "'postgres'"
+          - syslog_sequence_numbers: on
+          - syslog_split_messages: on
 verifier:
   #name: ansible
   name: testinfra

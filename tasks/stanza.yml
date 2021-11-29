@@ -1,0 +1,13 @@
+---
+- name: Check stanza state
+  stat:
+    path: "{{ postgresql_pgbackrest_repo_path }}/archive/{{ stanza }}/archive.info"
+  register: stanza_state
+
+- name: Create stanza
+  become_user: "{{ postgresql_user_name }}"
+  shell:
+    cmd: "{{ pgbackrest_path.stdout }} stanza-create --stanza={{ stanza }} --log-level-console=info"
+  when:
+    - not stanza_state.stat.exists
+    - not postgresql_init_replication

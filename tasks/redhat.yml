@@ -16,8 +16,8 @@
 #      - langpacks-en
 #      - langpacks-hu
 #      - glibc-all-langpacks
-
-- block:
+- name: Install postGIS
+  block:
   - name: Make sure epel repo is installed
     package:
       name: "epel-release"
@@ -61,7 +61,8 @@
     - ansible_facts['distribution_major_version'] == "8"
   notify: dnf_cache
 
-- meta: flush_handlers
+- name: Flush handlers
+  meta: flush_handlers
 
 - name: Import a key from a url
   rpm_key:

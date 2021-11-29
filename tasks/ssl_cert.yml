@@ -6,6 +6,51 @@
     path: "{{ inventory_dir }}/files/{{ postgresql_ssl_crt }}"
   register: external_crt
 
+- name: Fail when certs are not pre created for Centos 7
+  fail:
+    msg: >-
+      Ansible can not create certs on Centos7 anymore (Python libraries cryptography (>= 1.3) or PyOpenSSL (>= 0.15))
+      Please create it manually and set it in postgresql_ssl_crt and so on..
+  when:
+    - not external_crt.stat.exists
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version is version('8', '<')
+
+#- name: Install PIP for Centos 7
+#  package:
+#    name:
+#      - "python{{ (ansible_python_version is version('3.4', '<')) |\
+#        ternary(ansible_python.version.major, ansible_python.version.major \
+#        + ansible_python.version.minor) }}-pip"
+#      - "python{{ (ansible_python_version is version('3.4', '<')) |\
+#        ternary(ansible_python.version.major, ansible_python.version.major \
+#        + ansible_python.version.minor) }}-virtualenv"
+#      - "python{{ (ansible_python_version is version('3.4', '<')) |\
+#         ternary(ansible_python.version.major, ansible_python.version.major \
+#          + ansible_python.version.minor) }}-setuptools"
+#      - "python{{ ansible_python.version.major }}-wheel"
+#  when:
+#    - not external_crt.stat.exists
+#    - ansible_os_family == 'RedHat'
+#    - ansible_distribution_major_version is version('8', '<')
+#
+#- name: Remove old crypto module from Centos 7
+#  package:
+#    name: python2-cryptography
+#    state: absent
+#  when:
+#    - not external_crt.stat.exists
+#    - ansible_os_family == 'RedHat'
+#    - ansible_distribution_major_version is version('8', '<')
+#
+#- name: Install necessary modules for centos7 pyOpenSSL
+#  package:
+#    name: pyOpenSSL
+#  when:
+#    - not external_crt.stat.exists
+#    - ansible_os_family == 'RedHat'
+#    - ansible_distribution_major_version is version('8', '<')
+
 - name: Insall cryptography modul for ansible (Python 2.7-3.7-3.8)
   package:
     name: "{% if ansible_python_version is version('3', '<') %}python2-cryptography{% elif \
@@ -15,6 +60,7 @@
     state: present
   when:
     - not external_crt.stat.exists or ( postgresql_ssl_dh is defined )
+    - ansible_distribution_major_version is version('8', '>=')
 
 - name: Generate Diffie-Hellman parameters
   community.crypto.openssl_dhparam:
@@ -37,6 +83,7 @@
         type: "{{ postgresql_ssl_type }}"
         owner: "{{ postgresql_user_name }}"
         group: "{{ postgresql_user_name }}"
+        select_crypto_backend: auto
         mode: 0640
 
     - name: Generate an OpenSSL Certificate Signing Request for CA
@@ -52,6 +99,7 @@
           - keyCertSign
         basic_constraints: CA:TRUE
         basic_constraints_critical: true
+        select_crypto_backend: auto
         owner: "{{ postgresql_user_name }}"
         group: "{{ postgresql_user_name }}"
         mode: 0640
