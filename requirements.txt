@@ -12,8 +12,8 @@ certifi==2021.10.8
 cffi==1.15.0
 chardet==4.0.0
 charset-normalizer==2.0.8
-click==8.0.3
-click-help-colors==0.9.1
+#click==8.0.3
+#click-help-colors==0.9.1
 colorama==0.4.4
 commonmark==0.9.1
 cookiecutter==1.7.3
@@ -56,3 +56,4 @@ toml==0.10.2
 urllib3==1.26.7
 wcmatch==8.3
 websocket-client==1.2.1
+python-vagrant
