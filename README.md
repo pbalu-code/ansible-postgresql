@@ -454,6 +454,9 @@ postgresql_pgbackrest_conf:
 
 ##Release notes
 _____
+2.1.1:
+- - pgbackrest default + cronjobs moved to optional 
+
 2.1.0:  
 - pgbackrest integration
 - cronjob management

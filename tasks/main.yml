@@ -112,7 +112,7 @@
 - name: Include pgbackrest's tasks
   include_tasks: pgbackrest.yml
   when:
-    - postgresql_install_pgbackrest | default( true )
+    - postgresql_install_pgbackrest | default( false )
   tags:
     - pgbackrest
 
@@ -157,6 +157,7 @@
     special_time: "{{ item.value.special_time | default(omit) }}"
     state: "{{ item.value.state | default(omit) }}"
   with_dict: "{{ postgresql_cronjobs }}"
+  when: postgresql_cronjobs is defined
   tags:
     - cronjobs
     - cron
