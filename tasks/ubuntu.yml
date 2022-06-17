@@ -5,6 +5,7 @@
     name:
     - add-apt-key
     - ca-certificates
+    - acl
 
 - name: Add an Apt signing key, uses whichever key is at the URL
   ansible.builtin.apt_key:
