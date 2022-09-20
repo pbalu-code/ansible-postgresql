@@ -1,28 +1,29 @@
 # postgres/tasks/main.yml
 ---
 - name: Include distribution dependent variables
-  include_vars: "{{ item }}"
+  ansible.builtin.include_vars: "{{ item }}"
   with_first_found:
+    - "{{ ansible_architecture }}.yml"
     - "{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
     - "{{ ansible_os_family }}-{{ ansible_distribution_major_version }}.yml"
     - "{{ ansible_distribution }}.yml"
     - "{{ ansible_os_family }}.yml"
 
 - name: Install language files
-  package:
+  ansible.builtin.package:
     name: "{{ postgresql_langpacks }}"
   tags:
     - langsources
     - setlanguages
 
 - name: Check LANG env
-  set_fact:
+  ansible.builtin.set_fact:
     current_locale: "{{ lookup('env', 'LANG') | default('notexists') }}"
   tags:
     - setlanguages
 
 - name: Lookup LANG
-  set_fact:
+  ansible.builtin.set_fact:
     locale: "{{ lookup('env', 'LANG') | default('en_US.UTF-8') }}"
   tags:
     - setlanguages
@@ -38,7 +39,7 @@
     - setlanguages
 
 - name: Ensure set LANGS
-  shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' \
+  ansible.builtin.shell: "localectl set-locale LANG='{{ locale }}' LC_CTYPE='{{ locale }}' \
   LC_NUMERIC='{{ locale }}' LC_TIME='{{ locale }}' LC_COLLATE='{{ locale }}' \
   LC_MONETARY='{{ locale }}' LC_MESSAGES='{{ locale }}' LC_PAPER='{{ locale }}' \
   LC_NAME='{{ locale }}' LC_ADDRESS='{{ locale }}' LC_TELEPHONE='{{ locale }}' \
@@ -47,35 +48,51 @@
   tags:
     - stelanguages
 
+- name: Set cluster_name fact
+  ansible.builtin.set_fact:
+    postgresql_cluster_name: "{{ postgresql_cluster_name_default }}"
+  when: postgresql_cluster_name is not defined
+
 - name: Set conf dir fact
-  set_fact:
+  ansible.builtin.set_fact:
     postgresql_conf_dir: "{{ postgresql_conf_dir_default }}"
   when: postgresql_conf_dir is not defined
 
 - name: Set pgdata fact
-  set_fact:
+  ansible.builtin.set_fact:
     postgresql_pgdata: "{{ postgresql_pgdata_default }}"
   when: postgresql_pgdata is not defined
 
 - name: Include install tasks for RedHat
-  include_tasks: redhat.yml
+  ansible.builtin.include_tasks: redhat.yml
   when:
     - ansible_os_family == "RedHat"
+
 - name: Include install tasks for Ubuntu
-  include_tasks: ubuntu.yml
+  ansible.builtin.include_tasks: ubuntu.yml
   when:
     - ansible_distribution == "Ubuntu"
 
+- name: Include install tasks for Debian
+  ansible.builtin.include_tasks: debian.yml
+  when:
+    - ansible_distribution == "Debian"
+
+- name: Include install tasks for ARM
+  ansible.builtin.include_tasks: arm.yml
+  when:
+    - ansible_architecture == "armv7l" or ansible_architecture == "armv7" or ansible_architecture == "aarch64"
+
 - name: Gather the rpm package facts
-  package_facts:
+  ansible.builtin.package_facts:
     manager: auto
   when: postgresql_open_firewall
 
 - name: Populate service facts
-  service_facts:
+  ansible.builtin.service_facts:
 
 - name: Include tasks for Firewalld
-  include_tasks: firewalld.yml
+  ansible.builtin.include_tasks: firewalld.yml
   when:
     - postgresql_open_firewall
     - ansible_os_family == "RedHat"
@@ -83,7 +100,7 @@
     - ansible_facts.services['firewalld.service'].state == "running"
 
 - name: Include tasks for UFW
-  include_tasks: ufw.yml
+  ansible.builtin.include_tasks: ufw.yml
   when:
     - postgresql_open_firewall
     - ansible_distribution == "Ubuntu"
@@ -91,46 +108,70 @@
     - ansible_facts.services['ufw.service'].state == "running"
 
 - name: Include Config's tasks
-  include_tasks: config.yml
+  ansible.builtin.include_tasks: config.yml
 
 - name: Include database managers's tasks
-  include_tasks: databases.yml
+  ansible.builtin.include_tasks: databases.yml
 
 - name: Include user manager's tasks
-  include_tasks: users.yml
+  ansible.builtin.include_tasks: users.yml
 
 - name: Include pgrman's tasks
-  include_tasks: pgrman.yml
+  ansible.builtin.include_tasks: pgrman.yml
   when:
     - postgresql_install_pg_rman
 
 - name: Include pgaudit's tasks
-  include_tasks: pgaudit.yml
+  ansible.builtin.include_tasks: pgaudit.yml
   when:
     - postgresql_install_pg_audit
 
 - name: Include pgbackrest's tasks
-  include_tasks: pgbackrest.yml
+  ansible.builtin.include_tasks: pgbackrest.yml
   when:
-    - postgresql_install_pgbackrest | default( false )
+    - postgresql_install_pgbackrest
   tags:
     - pgbackrest
 
 - name: Check is replication necessary
-  stat:
+  ansible.builtin.stat:
     path: "{{ postgresql_pgdata }}/standby.signal"
   register: standby_signal
   when:
     - postgresql_init_replication
 
+- name: Setting up the password file with password
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_home }}/.pgpass"
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+    mode: '0600'
+    line: "{{ postgresql_replication_master }}:{{ postgresql_replication_master_port }}:replication:replicator:{{ postgresql_replication_password }}"
+    state: present
+    create: true
+  when:
+    - postgresql_replication_password is defined and postgresql_network_password_mode!='trust' and postgresql_replication_master is defined
+
+- name: Ensure there is no password related to the host in the password file
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_home }}/.pgpass"
+    owner: "{{ postgresql_user_name }}"
+    group: "{{ postgresql_user_name }}"
+    mode: '0600'
+    regexp: "^{{ postgresql_replication_master }}:{{ postgresql_replication_master_port }}:replication"
+    state: absent
+  when:
+    - postgresql_network_password_mode=='trust' and postgresql_replication_master is defined
+
+
 - name: Include replication's tasks
-  include_tasks: initreplication.yml
+  ansible.builtin.include_tasks: initreplication.yml
   when:
     - postgresql_init_replication
     - not standby_signal.stat.exists
 
 - name: Install crontab
-  package:
+  ansible.builtin.package:
     name: "{{ (ansible_os_family == 'RedHat') | ternary('crontabs', 'cron') }}"
   tags:
     - cron

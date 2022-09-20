@@ -1,12 +1,12 @@
 # postgres/tasks/pgrman.yml
 ---
 - name: Check pg_rman status
-  stat:
+  ansible.builtin.stat:
     path: "{{ postgresql_bin_dir }}/pg_rman"
   register: pg_rman_bin
 
 - name: Set Postgres config options pg_rman
-  template:
+  ansible.builtin.template:
     src: ansible_pg_rman.conf.j2
     dest: "{{ postgresql_conf_dir }}/conf.d/26ansible_pg_rman.conf"
     owner: "{{ postgresql_user_name }}"
@@ -16,18 +16,20 @@
   when: postgresql_pg_rman_postgres_conf is defined
   notify: Restart PostgreSQL
 
-- block:
+- name: Install pg_rman block
+  block:
   - name: Download pg_rman rpm
-    get_url:
-      url: "https://github.com{{ lookup('url', 'https://github.com/ossc-db/pg_rman/releases',\
+    ansible.builtin.get_url:
+      url: "https://github.com{{ lookup('url', 'https://github.com/ossc-db/pg_rman/releases', \
        split_lines=False) | regex_search('/ossc-db/pg_rman/releases/download/V.*?/pg_rman-.*?\\.pg' + \
        __postgresql_version_dotless | string + '\\.rhel' + ansible_distribution_major_version | \
        string + '\\.x86_64\\.rpm') }}"
       dest: /tmp/
+      mode: 0755
     register: pg_rman_rpm
 
   - name: Install pg_rman
-    package:
+    ansible.builtin.package:
       name: "{{ pg_rman_rpm.dest }}"
       disable_gpg_check: yes
   when:
@@ -35,9 +37,10 @@
     - not postgresql_pg_rman_install_from_source
     - not ansible_distribution == "Ubuntu"
 
-- block:
+- name: Compile pg_rman from sources
+  block:
   - name: Install requirement for compile (Redhat)
-    package:
+    ansible.builtin.package:
       name:
         - postgresql{{ postgresql_version | replace('.', '') }}-devel
         - make
@@ -53,12 +56,14 @@
         - readline-devel
       state: present
     when: not ansible_distribution == "Ubuntu"
+
   - name: Postgresql contrib package name
-    set_fact:
+    ansible.builtin.set_fact:
       postgresql_contrib: "{% if postgresql_version is version('9.6', '<=') %}postgresql-contrib-\
         {{ postgresql_version }}{% else %}postgresql-contrib{% endif %}"
+
   - name: Install requirement for compile (Ubuntu)
-    package:
+    ansible.builtin.package:
       name:
         - apt-utils
         - "postgresql-server-dev-{{ postgresql_version }}"
@@ -86,32 +91,31 @@
   #    line: "PATH=$PATH:{{ postgresql_bin_dir }}"
 
   - name: Get pg_rman source
-    git:
+    ansible.builtin.git:
       repo: "{{ postgresql_pg_rman_git_repo }}"
       version: "REL{{ postgresql_version is version('10', '>=') | ternary('_', '') }}\
       {{ postgresql_version | replace('.', '_') }}_STABLE"
       dest: /tmp/pg_rman
 
   - name: Compile pg_rman stage1
-    make:
+    community.general.make:
       chdir: /tmp/pg_rman
 
   - name: Compile pg_rman stage2
-    make:
+    community.general.make:
       chdir: /tmp/pg_rman
       target: install
 
   - name: Remove pg_rman source
-    file:
+    ansible.builtin.file:
       path: /tmp/pg_rman
       state: absent
-
   when:
     - not pg_rman_bin.stat.exists
     - postgresql_pg_rman_install_from_source or ( ansible_distribution == "Ubuntu" )
 
 - name: ARCLOG_PATH folder
-  file:
+  ansible.builtin.file:
     path: "{{ postgresql_home }}/{{ postgresql_version }}/arclog"
     state: directory
     owner: "{{ postgresql_user_name }}"
@@ -121,8 +125,8 @@
     serole: object_r
     seuser: system_u
 
-- name: update environment variables in UNIX account postgres (pg_rman)
-  blockinfile:
+- name: Update environment variables in UNIX account postgres (pg_rman)
+  ansible.builtin.blockinfile:
     create: yes
     dest: "{{ postgresql_home }}/.pgsql_profile"
     block: |
@@ -136,12 +140,12 @@
     marker: "#{mark} ANSIBLE MANAGED BLOCK pg_rman"
 
 - name: Check pg_rman init
-  stat:
+  ansible.builtin.stat:
     path: "{{ postgresql_home }}/{{ postgresql_version }}/backups/pg_rman.ini"
   register: postgresql_pg_rman_init
 
 - name: Ensure rman's destination folder exists
-  file:
+  ansible.builtin.file:
     path: "{{ postgresql_home }}/{{ postgresql_version }}/backups/rman"
     state: directory
     mode: '0700'
@@ -149,13 +153,13 @@
     group: "{{ postgresql_user_name }}"
 
 - name: Init pg_rman
-  shell: "{{ postgresql_bin_dir }}/pg_rman init -B \
+  ansible.builtin.shell: "{{ postgresql_bin_dir }}/pg_rman init -B \
   {{ postgresql_home }}/{{ postgresql_version }}/backups/rman -D {{ postgresql_pgdata }}"
   become_user: "{{ postgresql_user_name }}"
   when: not postgresql_pg_rman_init.stat.exists
 
-- name: pg_rman ini parameters
-  ini_file:
+- name: Pg_rman ini parameters
+  community.general.ini_file:
     path: "{{ postgresql_home }}/{{ postgresql_version }}/backups/pg_rman.ini"
     section:
     option: "{{ item.option }}"

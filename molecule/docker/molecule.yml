@@ -5,6 +5,11 @@ dependency:
 driver:
   name: docker
 
+molecule:
+  ignore_paths:
+    - venv
+    - venv3
+
 lint: |
   yamllint -c molecule/tests/yamllint.yml .
   ansible-lint -v -c molecule/tests/lint.yml .
@@ -30,24 +35,7 @@ platforms:
     pre_build_image: true
     port_bindings:
       5432: 54323
-  - name: postgres-centos8
-    hostname: postgres-centos8
-    network_mode: bridge
-    groups:
-      - postgres
-    image: "geerlingguy/docker-centos8-ansible"
-    image_version: latest
-    privileged: true
-    tty: true
-    tmpfs:
-      - /run
-      - /tmp
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    capabilities:
-      - SYS_ADMIN
-    command: "/lib/systemd/systemd"
-    pre_build_image: true
+
   - name: postgres-ubuntu1804
     hostname: postgres-ubuntu18
     network_mode: bridge  # bridge, none, container: foo, host
@@ -69,14 +57,57 @@ platforms:
     pre_build_image: true
     environment:
       container: docker
+
   - name: postgres-ubuntu2004
     hostname: postgres-ubuntu20
+    network_mode: bridge  # bridge, none, container: foo, host
+    groups:
+      - postgres
+    image: "geerlingguy/docker-ubuntu2004-ansible:latest"
+    privileged: true
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    capabilities:
+      - SYS_ADMIN
+    command: "/lib/systemd/systemd"
+    pre_build_image: true
+    environment:
+      container: docker
+
+  - name: postgres-ubuntu2204
+    hostname: postgres-ubuntu22
     network_mode: bridge  # bridge, none, container: foo, host
   #    published_ports:
   #      - 8081:80
     groups:
       - postgres
-    image: "geerlingguy/docker-ubuntu2004-ansible:latest"
+    image: "geerlingguy/docker-ubuntu2204-ansible:latest"
+    privileged: true
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    capabilities:
+      - SYS_ADMIN
+    command: "/lib/systemd/systemd"
+    pre_build_image: true
+    environment:
+      container: docker
+
+  - name: postgres-debian10
+    hostname: postgres-debian10
+    network_mode: bridge  # bridge, none, container: foo, host
+  #    published_ports:
+  #      - 8081:80
+    groups:
+      - postgres
+    image: "geerlingguy/docker-debian10-ansible:latest"
     privileged: true
     tty: true
     tmpfs:
@@ -106,7 +137,7 @@ provisioner:
         postgresql_version: 14
         postgresql_use_ssl: true
         postgresql_ssl_DH_size: 2048
-        postgresql_install_postgis: true
+        postgresql_install_postgis: false
         postgresql_network_password_mode: 'scram-sha-256'
         postgresql_conf:
           - listen_addresses: "'0.0.0.0'"
@@ -132,8 +163,8 @@ provisioner:
           - syslog_split_messages: on
         postgresql_global_users:
           - user: "replicator"
-            # password: "titok123"
-            # ssl_mode: require
+            password: "titok123"
+            ssl_mode: require
             role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,INHERIT,LOGIN,REPLICATION"
 
         postgresql_pg_hba_conf:
@@ -142,11 +173,21 @@ provisioner:
           #- "host	replication		replicator		0.0.0.0/0		scram-sha-256"
         #   - "hostssl	demo		bull		0.0.0.0/0		scram-sha-256"
           - "host   	demo		bull		0.0.0.0/0		scram-sha-256"
+          - "host   	demo2		bull		0.0.0.0/0		scram-sha-256"
+          - "hostssl   	demo		bull		0.0.0.0/0		scram-sha-256"
+          - "hostssl   	demo2		bull		0.0.0.0/0		scram-sha-256"
         #  - "hostssl	demo		bull		0.0.0.0/0		md5"
         #  - "host   	demo		bull		0.0.0.0/0		md5"
 
         postgresql_dbs:
           - name: "demo"
+            password: "secret123"
+            schema: balu
+            user: "bull"
+            encoding: UTF-8
+            locale: en_US.UTF-8
+            lc_collate: en_US.UTF-8
+          - name: "demo2"
             password: "secret123"
             user: "bull"
             encoding: UTF-8

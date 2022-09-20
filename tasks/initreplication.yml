@@ -1,25 +1,36 @@
 # postgres/tasks/initreplication.yml
 ---
 - name: Check is replication OK
-  stat:
+  ansible.builtin.stat:
     path: "{{ postgresql_pgdata }}/standby.signal"
   register: standby_signal_ok
 
-- name: Stop standby PostgreSQL
-  service:
+# Redhat
+- name: Stop the PostgreSQL cluster service for configuration (RedHat)
+  ansible.builtin.service:
+    name: "{{ postgresql_service_name }}-{{ postgresql_cluster_name }}"
+    state: stopped
+  when:
+    - not standby_signal_ok.stat.exists
+    - ansible_os_family == "RedHat"
+    - postgresql_cluster_name != postgresql_cluster_name_default
+
+
+- name: Stop PostgreSQL service for configuration
+  ansible.builtin.service:
     name: "{{ postgresql_service_name }}"
     state: stopped
   when: not standby_signal_ok.stat.exists
 
 - name: Create list of the data folder's content
-  find:
+  ansible.builtin.find:
     path: "{{ postgresql_pgdata }}/"
     patterns: "*"
     file_type: any
   register: datafolder
 
 - name: Remove PSQL data folder's content
-  file:
+  ansible.builtin.file:
     state: absent
     path: "{{ item.path }}"
   loop: "{{ datafolder.files }}"
@@ -35,25 +46,39 @@
 #    path: "{{ postgresql_pgdata }}/"
 #  when: not standby_signal_ok.stat.exists
 
-- name: Make pg_basebackup
+- name: Make pg_basebackup without password
   become_user: "{{ postgresql_user_name }}"
-  shell: "pg_basebackup -h {{ postgresql_replication_master }} -D {{ postgresql_pgdata }} \
+  ansible.builtin.shell: "pg_basebackup \
+  -d 'host={{ postgresql_replication_master }} port={{ postgresql_replication_master_port }} user={{ postgresql_replication_user }}' \
+  -D {{ postgresql_pgdata }} \
   -U replicator -w -v -R -X stream -C -S {{ postgresql_standby_slot_name }}"
   when:
     - not standby_signal_ok.stat.exists
+    - postgresql_network_password_mode == 'trust' or postgresql_network_password_mode == 'trust'
+
+- name: Make pg_basebackup with password
+  become_user: "{{ postgresql_user_name }}"
+  ansible.builtin.shell: "pg_basebackup \
+  -d 'host={{ postgresql_replication_master }} port={{ postgresql_replication_master_port }} user={{ postgresql_replication_user }} \
+  password={{ postgresql_replication_password }}' \
+  -D {{ postgresql_pgdata }} -U replicator -w -v -R -X stream -C -S {{ postgresql_standby_slot_name }}"
+  when:
+    - not standby_signal_ok.stat.exists
+    - postgresql_network_password_mode != 'trust'
 # http://www.postgresql.cn/docs/12/app-pgbasebackup.html
 
-
-# for redo conf at standy
+# redoing configuration on the standby because we deleted the
+# psql data folder's content for the replication
 - name: Include config.yml
-  include_tasks: config.yml
+  ansible.builtin.include_tasks: config.yml
+
 
 - name: Final replication Check
-  stat:
+  ansible.builtin.stat:
     path: "{{ postgresql_pgdata }}/standby.signal"
   register: standby_signal_ok
 
 - name: Show result
-  debug:
+  ansible.builtin.debug:
     msg: "The HOT Standby asyncron replication is ready to use."
   when: standby_signal_ok.stat.exists

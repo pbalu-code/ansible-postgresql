@@ -9,8 +9,8 @@ postgresql_home: /var/lib/postgresql
 
 
 postgresql_langpacks:
-  - language-pack-hu
-  - language-pack-eu
+  # - language-pack-hu
+  # - language-pack-eu
   - locales
 
-postgresql_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_lsb.codename }}-pgdg main"
+postgresql_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main"

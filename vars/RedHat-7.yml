@@ -1,7 +1,8 @@
 # postgres/vars/redhat7.yml
 ---
-postgresql_pgdata_default: /var/lib/pgsql/{{ postgresql_version }}/data
-postgresql_conf_dir_default: /var/lib/pgsql/{{ postgresql_version }}/data
+postgresql_cluster_name_default: data
+postgresql_pgdata_default: /var/lib/pgsql/{{ postgresql_version }}/{{ postgresql_cluster_name }}
+postgresql_conf_dir_default: /var/lib/pgsql/{{ postgresql_version }}/{{ postgresql_cluster_name }}
 postgresql_service_name: postgresql-{{ postgresql_version }}
 postgresql_bin_dir: "/usr/pgsql-{{ postgresql_version }}/bin"
 postgresql_home: /var/lib/pgsql

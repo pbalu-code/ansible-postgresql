@@ -3,9 +3,10 @@
 - name: Install prerequirements
   ansible.builtin.apt:
     name:
-    - add-apt-key
+    # - add-apt-key
     - ca-certificates
-    - acl
+    - lsb-release
+    - gpg
 
 - name: Add an Apt signing key, uses whichever key is at the URL
   ansible.builtin.apt_key:

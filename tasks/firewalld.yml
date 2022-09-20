@@ -1,7 +1,7 @@
 # postgresql/tasks/firewalld.yml
 ---
 - name: Firewalld Open PostgreSQL ports
-  firewalld:
+  ansible.posix.firewalld:
     service: postgresql
     permanent: yes
     immediate: yes

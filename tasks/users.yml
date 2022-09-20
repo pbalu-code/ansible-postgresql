@@ -3,11 +3,12 @@
 - name: Ensure user has got access to the database
   become: true
   become_user: postgres
-  postgresql_user:
+  community.postgresql.postgresql_user:
     db: "{{ item.name }}"
     name: "{{ item.user }}"
     password: "{{ item.password | default(omit) }}"
     priv: "{{ item.priv | default('ALL') }}"
+    port: "{{ postgresql_port }}"
     ssl_mode: "{{ item.ssl_mode | default(omit) }}"
     state: present
   loop: "{{ postgresql_dbs }}"
@@ -24,9 +25,10 @@
 - name: Ensure standard users has not got unnecessary privileges
   become: true
   become_user: postgres
-  postgresql_user:
+  community.postgresql.postgresql_user:
     name: "{{ item.user }}"
     role_attr_flags: NOSUPERUSER,NOCREATEDB
+    port: "{{ postgresql_port }}"
     state: present
   loop: "{{ postgresql_dbs }}"
   no_log: true
@@ -38,16 +40,17 @@
 - name: Create global users
   become: true
   become_user: postgres
-  postgresql_user:
+  community.postgresql.postgresql_user:
     name: "{{ item.user }}"
     password: "{{ item.password | default(omit) }}"
     role_attr_flags: "{{ item.role_attr_flags }}"
     ssl_mode: "{{ item.ssl_mode | default(omit) }}"
+    port: "{{ postgresql_port }}"
     state: present
   loop: "{{ postgresql_global_users }}"
   environment:
     PGOPTIONS: "{{ (postgresql_network_password_mode == 'scram-sha-256') \
-    | ternary('-c password_encryption=scram-sha-256', omit) }}"
+    | ternary('-c password_encryption=scram-sha-256', '') }}"
   no_log: true
   when:
     - postgresql_global_users is defined
@@ -55,4 +58,4 @@
   notify: Reload PostgreSQL
 
 - name: Force all notified handlers to run at this point, not waiting for normal sync points
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers

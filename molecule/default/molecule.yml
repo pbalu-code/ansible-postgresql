@@ -15,28 +15,53 @@ vagrant:
     - "vm.network 'forwarded_port', guest: 80, host: 8080"
 
 platforms:
-  - name: postgres-centos7
-    box: "bento/centos-7.9"
-    memory: 4096
-    groups:
-      - postgres
-    interfaces:
-      - network_name: private_network
-        type: static
-        ip: 192.168.233.144
-        auto_config: true
+  # - name: postgres-debian10
+  #   box: "debian/buster64"
+  #   memory: 4096
+  #   groups:
+  #     - postgres
+  #   interfaces:
+  #     - network_name: private_network
+  #       type: static
+  #       ip: 192.168.56.141
+  #       auto_config: true
+  #
+  # - name: postgres-debian11
+  #   box: "debian/bullseye64"
+  #   memory: 4096
+  #   groups:
+  #     - postgres
+  #   interfaces:
+  #     - network_name: private_network
+  #       type: static
+  #       ip: 192.168.56.140
+  #       auto_config: true
+
+  # - name: postgres-centos7
+  #   # box: "bento/centos-7.9"
+  #   box: "centos/stream8"
+  #   memory: 4096
+  #   groups:
+  #     - postgres
+  #   interfaces:
+  #     - network_name: private_network
+  #       type: static
+  #       ip: 192.168.56.144
+  #       auto_config: true
+  #
   - name: postgres-centos8
-    box: "bento/centos-8.3"
+    box: "centos/stream8"
     memory: 4096
     groups:
-      - postgres
+     - postgres
     interfaces:
-      - network_name: private_network
-        type: static
-        ip: 192.168.233.145
-        auto_config: true
+     - network_name: private_network
+       type: static
+       ip: 192.168.233.145
+       auto_config: true
     options:
-      append_platform_to_hostname: no
+     append_platform_to_hostname: no
+
   - name: postgres-ubuntu18
     box: ubuntu/bionic64
     groups:
@@ -47,6 +72,7 @@ platforms:
       - network_name: private_network
         auto_config: true
         ip: 192.168.233.146
+
   - name: postgres-ubuntu20
     #box: "generic/ubuntu2004"
     box: ubuntu/focal64
@@ -85,8 +111,10 @@ provisioner:
         postgresql_ssl_DH_size: 2048
         postgresql_install_postgis: false
         postgresql_network_password_mode: 'scram-sha-256'
+        # postgresql_port: 5433
         postgresql_conf:
           - listen_addresses: "'0.0.0.0'"
+          - port: "{{ postgresql_port }}"
           - max_connections: '200'       # decrease connection limit
           - password_encryption: 'scram-sha-256'
           - max_wal_senders: 5
@@ -109,14 +137,15 @@ provisioner:
           - syslog_split_messages: on
         postgresql_global_users:
           - user: "replicator"
-            # password: "titok123"
-            # ssl_mode: require
+            password: "secret123"
+            ssl_mode: require
             role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,INHERIT,LOGIN,REPLICATION"
 
         postgresql_pg_hba_conf:
           - "host	all				postgres		127.0.0.0/24    trust"
-          - "host	replication		replicator		0.0.0.0/0		trust"
-          #- "host	replication		replicator		0.0.0.0/0		scram-sha-256"
+#          - "host	replication		replicator		0.0.0.0/0		trust"
+          - "host	replication		replicator		0.0.0.0/0		scram-sha-256"
+          - "hostssl	replication		replicator		0.0.0.0/0		scram-sha-256"
           - "hostssl	demo		bull		0.0.0.0/0		scram-sha-256"
           - "host   	demo		bull		0.0.0.0/0		scram-sha-256"
         #  - "hostssl	demo		bull		0.0.0.0/0		md5"
@@ -153,18 +182,54 @@ provisioner:
             demo:
               pg1-path: "{{ postgresql_pgdata_default }}"
               pg1-port: !!str 5432
+        postgresql_cronjobs:
+          pgbackrest_weekly:
+            job: pgbackrest --type=full --stanza=demo backup
+            minute: !!str 0
+            hour: !!str 2
+            month: "*"
+            weekday: !!str 0
+            user: postgres
+          pgbackrest_daily:
+            job: pgbackrest --type=diff --stanza=demo backup
+            minute: !!str 0
+            hour: !!str 2
+            month: "*"
+            weekday: "1-6"
+            user: postgres
 
     host_vars:
-      postgres-centos7:
+      postgres-debian10:
+        # postgresql_cluster_name: mainCluster
+        postgresql_dbs:
+          - name: "demo"
+            password: "secret123"
+            user: "bull"
+            encoding: UTF-8
+            locale: en_US.UTF-8
+            lc_collate: en_US.UTF-8
+
+        postgresql_extra_packages:
+          - "postgresql-plperl-{{ postgresql_version }}"
+          - pgbackrest
+          - nfs-common
+
+      postgres-debian11:
+#        postgresql_replication_master_port: 5433
+        postgresql_replication_password: "secret123"
+          # postgresql_cluster_name: standbyCluster
+        postgresql_init_replication: true
         postgresql_standby_slot_name: pgstandby1
         postgresql_replication_master: "192.168.233.145"
-        postgresql_init_replication: true
         postgresql_extra_packages:
-          - "postgresql{{ postgresql_version }}-plperl"
-          - nfs-utils
+          - "postgresql-plperl-{{ postgresql_version }}"
+          - pgbackrest
+          - nfs-common
+
       postgres-centos8:
         postgresql_dbs:
           - name: "demo"
+            schema: balu
             password: "secret123"
             user: "bull"
             encoding: UTF-8
@@ -177,12 +242,14 @@ provisioner:
         postgresql_replication_master: "192.168.233.147"
         postgresql_standby_slot_name: pgstandby1
         postgresql_init_replication: true
+        postgresql_replication_password: "secret123"
         postgresql_extra_packages:
           - "postgresql-plperl-{{ postgresql_version }}"
           - nfs-common
       postgres-ubuntu20:
         postgresql_dbs:
           - name: "demo"
+            schema: balu
             password: "secret123"
             user: "bull"
             encoding: UTF-8
@@ -190,7 +257,9 @@ provisioner:
             lc_collate: en_US.UTF-8
         postgresql_extra_packages:
           - "postgresql-plperl-{{ postgresql_version }}"
+          - pgbackrest
           - nfs-common
+
 verifier:
   #name: ansible
   name: testinfra

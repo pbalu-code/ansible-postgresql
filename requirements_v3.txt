@@ -1,9 +1,8 @@
-ansible==2.10.7
+ansible==3.4.0
 ansible-base==2.10.17
 ansible-compat==2.2.0
 ansible-core==2.13.4
 ansible-lint==6.6.0
-ansible-vault==2.1.0
 arrow==1.2.3
 attrs==22.1.0
 binaryornot==0.4.4

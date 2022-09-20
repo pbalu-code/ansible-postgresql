@@ -1,6 +1,7 @@
 # postgres/defaults/main.yml
 ---
 postgresql_version: 12
+postgresql_port: 5432
 postgresql_install_postgis: false
 postgresql_posgis_to_install: postgis25_12
 # https://trac.osgeo.org/postgis/wiki/UsersWikiPostgreSQLPostGIS
@@ -51,10 +52,14 @@ postgresql_user_name: postgres
 postgresql_use_ssl: false
 postgresql_open_firewall: true
 postgresql_init_replication: false
+# The postgresql cluster port you want to replicate from
+postgresql_replication_master_port: 5432
+postgresql_replication_user: replicator
+postgresql_replication_password: postgres
 
 postgresql_pgrman_source_git: https://github.com/ossc-db/pg_rman.git
 
-postgresql_apt_repo: "deb https://apt.postgresql.org/pub/repos/apt {{ ansible_lsb.codename }}-pgdg main"
+#postgresql_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_lsb.codename }}-pgdg main"
 postgresql_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
 
 ## For self signed key ####
@@ -70,7 +75,7 @@ postgresql_ssl_dh: dhparam.pem
 #  - dns:postgresql.local
 postgresql_ssl_organization_name: "The Big One Organisation Ltd."
 postgresql_ssl_organization_unit_name: "IT - Who else"
-postgresql_ssl_HonorCipherOrder: "on"
+postgresql_ssl_honorcipherorder: "on"
 
 #postgresql_dbs:
 #  - name: database1
@@ -80,9 +85,50 @@ postgresql_ssl_HonorCipherOrder: "on"
 #    locale: en_US.UTF-8
 #    template: 'template0'
 
+postgresql_default_lang: en_US.UTF-8
 postgresql_locales:
   - en_US.UTF-8
 #  - hu_HU.UTF-8
 #locale: en_US.UTF-8
 #zone: Europe/Budapest
 #zoneinfo_path: /usr/share/zoneinfo/Europe/Budapest
+
+
+postgresql_install_pgbackrest: true
+postgresql_pgbackrest_repo_dirs:
+  - /var/lib/pgbackrest
+
+postgresql_pgbackrest_tmp: /var/lib/pgbackrest-tmp
+postgresql_pgbackrest_repo_path: /var/lib/pgbackrest
+postgresql_pgbackrest_stanza_names:
+  - demo
+
+postgresql_pgbackrest_conf:
+  global:
+    - repo1-path: "{{ postgresql_pgbackrest_repo_path }}"
+    - repo1-retention-full: !!str 2
+    - repo1-cipher-pass: fkMcdswr%fsjkxclsfgjdk73lhsdhj38ttkfw345jgbb345hvbfdfw22l98
+    - repo1-cipher-type: aes-256-cbc
+    - lock-path: "{{ postgresql_pgbackrest_tmp }}"
+  global_archive_push:
+    compress-level: !!str 3
+  sections:
+    demo:
+      pg1-path: "{{ postgresql_pgdata_default }}"
+      pg1-port: !!str "{{ postgresql_port }}"
+
+postgresql_cronjobs:
+  pgbackrest_weekly:
+    job: pgbackrest --type=full --stanza=demo backup
+    minute: !!str 0
+    hour: !!str 2
+    month: "*"
+    weekday: !!str 0
+    user: postgres
+  pgbackrest_daily:
+    job: pgbackrest --type=diff --stanza=demo backup
+    minute: !!str 0
+    hour: !!str 2
+    month: "*"
+    weekday: "1-6"
+    user: postgres

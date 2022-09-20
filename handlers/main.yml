@@ -1,13 +1,15 @@
 # postgres/handlers/main.yml
 ---
 - name: Reload PostgreSQL
-  service:
+  ansible.builtin.service:
     name: "{{ postgresql_service_name }}"
     state: reloaded
+
 - name: Restart PostgreSQL
-  service:
+  ansible.builtin.service:
     name: "{{ postgresql_service_name }}"
     state: restarted
-- name: dnf_cache
-  yum:
+
+- name: Dnf_cache
+  ansible.builtin.yum:
     update_cache: yes

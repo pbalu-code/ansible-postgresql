@@ -1,7 +1,65 @@
 # postgres/tasks/config.yml
 ---
+# Debian
+- name: Check if {{ postgresql_cluster_name }} Cluster already exists(Debian)
+  ansible.builtin.shell: "pg_ctlcluster {{ postgresql_version }} {{ postgresql_cluster_name }} status"
+  register: custom_cluster
+  ignore_errors: true
+  changed_when: custom_cluster.rc == 1
+  failed_when: false
+  when: ansible_os_family == "Debian"
+
+# Debian
+- name: Create {{ postgresql_cluster_name }} Cluster (Debian)
+  become_user: "{{ postgresql_user_name }}"
+  ansible.builtin.shell: "pg_createcluster -p {{ postgresql_port }} {{ postgresql_version }} {{ postgresql_cluster_name }}"
+  when:
+    - ansible_os_family == "Debian"
+    - custom_cluster.rc == 1
+    - postgresql_cluster_name != postgresql_cluster_name_default
+
+
+# Redhat
+- name: Check if {{ postgresql_cluster_name }} Cluster already exists(RedHat)
+  become_user: "{{ postgresql_user_name }}"
+  ansible.builtin.shell: "{{ postgresql_bin_dir }}/pg_ctl status -D {{ postgresql_pgdata }}"
+  register: custom_cluster
+  ignore_errors: true
+  changed_when: custom_cluster.rc == 4
+  failed_when: false
+  when: ansible_os_family == "RedHat"
+
+
+# RedHat
+- name: Create {{ postgresql_cluster_name }} Cluster (RedHat)
+  become_user: root
+  block:
+    - name: Copy default service
+      ansible.builtin.copy:
+        src: "/usr/lib/systemd/system/{{ postgresql_service_name }}.service"
+        dest: "/usr/lib/systemd/system/{{ postgresql_service_name }}-{{ postgresql_cluster_name }}.service"
+        remote_src: yes
+        mode: 0644
+        owner: root
+        group: root
+
+    - name: Change pgdata lines in service files
+      ansible.builtin.lineinfile:
+        path: "/usr/lib/systemd/system/{{ postgresql_service_name }}-{{ postgresql_cluster_name }}.service"
+        search_string: "Environment=PGDATA=/var/lib/pgsql/{{ postgresql_version }}/{{ postgresql_cluster_name_default }}/"
+        line: "Environment=PGDATA={{ postgresql_pgdata }}/"
+
+
+    - name: Initdb
+      ansible.builtin.shell: "{{ postgresql_bin_dir }}/postgresql-{{ postgresql_version }}-setup initdb {{ postgresql_service_name }}-{{ postgresql_cluster_name }}"
+      when: custom_cluster.rc == 4
+  when:
+    - ansible_os_family == "RedHat"
+    - custom_cluster.rc == 4
+    - postgresql_cluster_name != postgresql_cluster_name_default
+
 - name: Create conf.d
-  file:
+  ansible.builtin.file:
     path: "{{ postgresql_conf_dir }}/conf.d"
     state: directory
     owner: "{{ postgresql_user_name }}"
@@ -9,7 +67,7 @@
     mode: 0755
 
 - name: Include ansible_postgresql.conf in postgresql.conf
-  lineinfile:
+  ansible.builtin.lineinfile:
     line: "include = 'conf.d/25ansible_postgresql.conf'"
     dest: "{{ postgresql_conf_dir }}/postgresql.conf"
     backup: yes
@@ -17,7 +75,7 @@
   when: "postgresql_version is version_compare('9.3', '<')"
 
 - name: Set config options
-  template:
+  ansible.builtin.template:
     src: ansible_postgresql.conf.j2
     dest: "{{ postgresql_conf_dir }}/conf.d/25ansible_postgresql.conf"
     owner: "{{ postgresql_user_name }}"
@@ -27,7 +85,7 @@
   notify: Restart PostgreSQL
 
 - name: Install pg_hba.conf
-  template:
+  ansible.builtin.template:
     src: pg_hba.conf.{{ ansible_os_family | lower }}.j2
     dest: "{{ postgresql_conf_dir }}/pg_hba.conf"
     owner: "{{ postgresql_user_name }}"
@@ -42,7 +100,7 @@
 #  be in (with or without '=', with a comment at end of line,
 # etc.). So check for a match first and then add if there's no match.
 - name: Check for conf.d include in postgresql.conf
-  lineinfile:
+  ansible.builtin.lineinfile:
     line: 'why ansible ;)'
     # The '=' is optional but is present in postgresql.conf.sample,
     # which Debian's sample is based off of (but include*
@@ -57,7 +115,7 @@
   when: "postgresql_version is version_compare('9.3', '>=')"
 
 - name: Set conf.d include in postgresql.conf
-  lineinfile:
+  ansible.builtin.lineinfile:
     line: "include_dir = 'conf.d'"
     path: "{{ postgresql_conf_dir }}/postgresql.conf"
     backup: yes
@@ -65,14 +123,33 @@
   when: "postgresql_version is version_compare('9.3', '>=') and __postgresql_include_dir_result is changed"
 
 - name: Include SSL related tasks
-  include_tasks: ssl_cert.yml
+  ansible.builtin.include_tasks: ssl_cert.yml
   when: postgresql_use_ssl
 
 - name: Force all notified handlers to run at this point, not waiting for normal sync points
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
 
 - name: Ensure PostgreSQL is running
-  service:
+  ansible.builtin.service:
     name: "{{ postgresql_service_name }}"
     enabled: yes
     state: started
+
+# Redhat
+- name: Ensure the PostgreSQL cluster is running (RedHat)
+  ansible.builtin.service:
+    name: "{{ postgresql_service_name }}-{{ postgresql_cluster_name }}"
+    enabled: yes
+    state: started
+  when:
+    - ansible_os_family == "RedHat"
+    - postgresql_cluster_name != postgresql_cluster_name_default
+
+
+# Debian
+- name: Ensure the PostgreSQL cluster is running (Debian)
+  ansible.builtin.service:
+    name: "{{ postgresql_service_name }}@{{ postgresql_version }}-{{ postgresql_cluster_name }}"
+    enabled: yes
+    state: started
+  when: ansible_os_family == "Debian"

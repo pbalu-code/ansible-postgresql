@@ -14,3 +14,5 @@ exclude_paths:
   - .idea/
   - lib/
   - lib64/
+  - venv/
+  - venv3/

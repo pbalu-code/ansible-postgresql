@@ -19,18 +19,18 @@
 - name: Install postGIS
   block:
   - name: Make sure epel repo is installed
-    package:
+    ansible.builtin.package:
       name: "epel-release"
       state: present
 
   - name: Install Code Ready (RedHat)
-    shell:
+    ansible.builtin.shell:
       cmd: "subscription-manager repos --enable \
       codeready-builder-for-rhel-{{ ansible_distribution_major_version }}-x86_64-rpms"
     when: ansible_distribution == "RedHat"
 
   - name: Enable Powertools (for PostGIS)
-    ini_file:
+    ansible.builtin.ini_file:
       path: /etc/yum.repos.d/CentOS-Linux-PowerTools.repo
       section: powertools
       option: enabled
@@ -40,14 +40,14 @@
       - ansible_distribution_major_version is version('8', '>=')
       - ansible_distribution != 'RedHat'
       - ansible_os_family == "RedHat"
-    notify: dnf_cache
+    notify: Dnf_cache
 
   when:
     - postgresql_install_postgis
 #    - ansible_distribution != "RedHat"
 
 - name: Disable original postgresql dnf module
-  blockinfile:
+  ansible.builtin.blockinfile:
     path: /etc/dnf/modules.d/postgresql.module
     create: yes
     block: |
@@ -59,18 +59,18 @@
     mode: 0644
   when:
     - ansible_facts['distribution_major_version'] == "8"
-  notify: dnf_cache
+  notify: Dnf_cache
 
 - name: Flush handlers
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
 
 - name: Import a key from a url
-  rpm_key:
+  ansible.builtin.rpm_key:
     state: present
     key: https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG
 
-- name: install repo for PostgreSQL
-  package:
+- name: Install repo for PostgreSQL
+  ansible.builtin.package:
 #    name: "https://download.postgresql.org/pub/repos/yum/{{ postgresql_version }}\
 #  /redhat/rhel-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
     name: "https://download.postgresql.org/pub/repos/yum/reporpms/\
@@ -80,12 +80,12 @@
     - outgoing_proxy is not defined
 
 - name: Set PostgreSQL dotless version fact
-  set_fact:
+  ansible.builtin.set_fact:
     __postgresql_version_dotless: "{{ postgresql_version | replace('.', '') | replace('-', '') }}"
     __postgresql_command_sep: "{{ postgresql_version is version('10', '>=') | ternary('-', '') }}"
 
 - name: "Install PostgreSQL version {{ postgresql_version }}"
-  package:
+  ansible.builtin.package:
     name:
       - "postgresql{{ __postgresql_version_dotless }}-server"
       - "postgresql{{ __postgresql_version_dotless }}-contrib"
@@ -94,14 +94,14 @@
     state: present
 
 - name: Install pg_repack
-  package:
+  ansible.builtin.package:
     name: "pg_repack{{ __postgresql_version_dotless }}"
     state: present
   when: postgresql_version is version('14', '<')
 
 # posgres_db modul - Failed to import the required Python library (psycopg2)
-- name: install python module for Postgres Redhat 8+
-  package:
+- name: Install python module for Postgres Redhat 8+
+  ansible.builtin.package:
     name:
       - "{% if ansible_python_version is version('3', '<') %}python2-psycopg2{% elif \
           ansible_python_version is version('3.8', '<') %}python3-psycopg2{% else \
@@ -109,8 +109,8 @@
     state: present
   when: ansible_distribution_major_version is version('8', '>=')
 
-- name: install python module for Postgres Redhat 7
-  package:
+- name: Install python module for Postgres Redhat 7
+  ansible.builtin.package:
     name:
       - "{% if ansible_python_version is version('3', '<') %}python-psycopg2{% elif \
           ansible_python_version is version('3.8', '<') %}python3-psycopg2{% else \
@@ -119,20 +119,20 @@
   when: ansible_distribution_major_version is version('8', '<')
 
 - name: Install Postgresql libs for python
-  package:
+  ansible.builtin.package:
     name:
       - "{{ ansible_distribution_major_version is version('8', '>=') | \
       ternary('libpq-devel', 'libpq5-devel') }}"
   when: postgresql_version is version('10', '<')
 
 - name: Install extra postgresql packages
-  package:
+  ansible.builtin.package:
     name: "{{ postgresql_extra_packages }}"
     state: present
   when: postgresql_extra_packages is defined
 
 - name: Install PostGIS
-  package:
+  ansible.builtin.package:
     name: "{{ postgresql_posgis_to_install }}"
     state: present
   when:
@@ -144,7 +144,7 @@
 #    - ansible_os_family == "RedHat"
 #    - ansible_distribution_major_version == "7"
 - name: "Enable init.d script for {{ postgresql_version }}"
-  sysvinit:
+  ansible.builtin.sysvinit:
     name: "postgresql-{{ postgresql_version }}"
     #state: started
     enabled: yes
@@ -158,20 +158,20 @@
     - ansible_distribution_major_version == "6"
 
 - name: Check DB init state
-  stat:
+  ansible.builtin.stat:
     path: "{{ postgresql_pgdata }}/pg_tblspc"
   register: dbinit
 
 - name: Create database
-  command: "{{ postgresql_bin_dir }}/postgresql\
+  ansible.builtin.command: "{{ postgresql_bin_dir }}/postgresql\
     {{ __postgresql_command_sep }}{{ __postgresql_version_dotless }}-setup initdb
     creates={{ postgresql_pgdata }}/postgresql.conf"
   become: true
   #become_user: "{{ postgresql_user_name }}"
   when: not dbinit.stat.exists
 
-- name: update environment variables in UNIX account postgres
-  blockinfile:
+- name: Update environment variables in UNIX account postgres
+  ansible.builtin.blockinfile:
     create: yes
     dest: "{{ postgresql_home }}/.pgsql_profile"
     block: |
@@ -182,8 +182,8 @@
     mode: 0640
   become: true
 
-- name: start postgresql service
-  service:
+- name: Start postgresql service
+  ansible.builtin.service:
     name: "{{ postgresql_service_name }}"
     state: started
     enabled: true

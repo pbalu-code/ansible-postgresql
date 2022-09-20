@@ -2,12 +2,12 @@
 ---
 - name: Check SSL certs are provided
   delegate_to: localhost
-  stat:
+  ansible.builtin.stat:
     path: "{{ inventory_dir }}/files/{{ postgresql_ssl_crt }}"
   register: external_crt
 
 - name: Fail when certs are not pre created for Centos 7
-  fail:
+  ansible.builtin.fail:
     msg: >-
       Ansible can not create certs on Centos7 anymore (Python libraries cryptography (>= 1.3) or PyOpenSSL (>= 0.15))
       Please create it manually and set it in postgresql_ssl_crt and so on..
@@ -52,7 +52,7 @@
 #    - ansible_distribution_major_version is version('8', '<')
 
 - name: Insall cryptography modul for ansible (Python 2.7-3.7-3.8)
-  package:
+  ansible.builtin.package:
     name: "{% if ansible_python_version is version('3', '<') %}python2-cryptography{% elif \
     ansible_python_version is version('3.8', '<') %}python3-cryptography{% elif \
     ansible_os_family == 'RedHat' and ansible_python_version is version('3.8', '>=') \

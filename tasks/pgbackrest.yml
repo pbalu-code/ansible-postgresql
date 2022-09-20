@@ -1,7 +1,7 @@
 #postgresql/tasks/pgbackrest.yml
 ---
 - name: Install pgbackrest
-  package:
+  ansible.builtin.package:
     name: pgbackrest
 
 #- name: Create /etc/pgbackrest dir
@@ -13,7 +13,7 @@
 #    mode: '0750'
 
 - name: Create pgbackrest repo folders
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: postgres
@@ -22,7 +22,7 @@
   with_items: "{{ postgresql_pgbackrest_repo_dirs }}"
 
 - name: "Create pgbackrest tmp dir ( {{ postgresql_pgbackrest_tmp }} )"
-  file:
+  ansible.builtin.file:
     path: "{{ postgresql_pgbackrest_tmp }}"
     state: directory
     owner: postgres
@@ -30,21 +30,21 @@
     mode: '0755'
 
 - name: Create pgbackrest conf
-  template:
+  ansible.builtin.template:
     dest: /etc/pgbackrest.conf
     src: pgbackrest.conf.j2
     owner: postgres
     group: postgres
     mode: '0640'
 
-- name: get pgbackrest path
-  shell:
+- name: Get pgbackrest path
+  ansible.builtin.shell:
     cmd: which pgbackrest
   register: pgbackrest_path
   changed_when: false
 
 - name: Include create stanza tasks
-  include_tasks: stanza.yml
+  ansible.builtin.include_tasks: stanza.yml
   with_items: "{{ postgresql_pgbackrest_stanza_names }}"
   loop_control:
     loop_var: stanza

@@ -1,12 +1,16 @@
-ansible-postgresql v2.1.0
+ansible-postgresql v2.2.0
 ===========
-Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-20
+Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22, Debian 10-11
 
 ###Tested:
 - Centos7
-- Centos8 
+- Centos8
 - Ubuntu18
 - Ubuntu20
+- Ubuntu22
+- Debian10
+- Debian11
+
 
 ###PostgreSQL:
 - 9.6
@@ -23,13 +27,13 @@ Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-20
 
 ###Test enivonment:
 **molecule:**
-- vagrant: (Centos7-8, Ubuntu18-20)
-- docker: Centos8
+- vagrant: (Centos7, Ubuntu18-22, Debian10-11)
+- docker: Centos7, Ubuntu18-22, Debian10
 
 Extra features
 --------------
  - ssl
- - postgis  # broken 
+ - postgis*  (Debina 10 broken)
  - pg_rman
  - pg_audit
  - replication
@@ -78,8 +82,12 @@ Role Variables
 
 - `postgresql_user_name`: System username to be used for PostgreSQL (default: `postgres`).
 
-- `postgresql_version`: PostgreSQL version to install.The default is `12`.
-  
+- `postgresql_version`: PostgreSQL version to install. The default is `14`.
+
+- `postgresql_port`: The port PostgreSQL will use. The default is `5432`. You need to set the port option in `postgresql_conf` to this aswell to fully work.
+
+- `postgresql_cluster_name`: string, the role will use this cluster name. If used with `postgresql_init_replication` is true it will replicate to this cluster. You can use this if there is multiple different services using postgresql and want them in different clusters. The default is `main` on Ubuntu systems and `data` on Centos systems. The default cluster is always present and running, so if you use this option you must declare a port that is different than the default 5432 to avoid port conflicts. This role assumes that the default cluster is in use so does not remove nor stop that if this option is used. This is a host related variable. Use it in host variable!
+
 - `postgresql_conf`: A list of hashes (dictionaries) of `postgresql.conf` options (keys) and values. These options are
   not added to `postgresql.conf` directly - the role adds a `conf.d` subdirectory in the configuration directory and an
   include statement for that directory to `postgresql.conf`. Options set in `postgresql_conf` are then set in
@@ -208,6 +216,7 @@ Role Variables
 
 - `postgresql_dbs`:  Create databases with these parameters.
     - `name`: database name
+    - `schema`: schema name (optional)
     - `password`: (optional) User's password to connect the database
     - `user`: User to connect the current database
     - `priv`: Slash-separated PostgreSQL privileges string: priv1/priv2, where privileges can be defined for database ( allowed options - 'CREATE', 'CONNECT', 'TEMPORARY', 'TEMP', 'ALL'. For example CONNECT ) or for table ( allowed options - 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'ALL'. For example table:SELECT ). Mixed example of this string: CONNECT/CREATE/table1:SELECT/table2:INSERT.
@@ -248,18 +257,20 @@ If you want to move the database back to the default tablespace, explicitly set 
 
 Replication
 ---------------
-Tested with PostgreSQL 12, 13
+Tested with PostgreSQL 12, 13, 14
 
 This role is able to create asyncron streaming replication too.
 Access rights and the config should be created by config options like postgresql_conf, postgresql_pg_hba_conf ect.  
-The authentication is trust / IP based.
+The authentication is trust / IP based or it can be password based.
 
 Replication related variables:
 
 - `postgresql_standby_slot_name`: string, what should be the name of the replication stream. This is a host related variable. Use it in host variable! 
 - `postgresql_init_replication`: boolean Sync standby server to the master by pg_basebackup method. __If the standby.signal file is not present.__ 
 - `postgresql_replication_master`: ip/hostname. Will it use during pg_basebackup
- 
+- `postgresql_replication_master_port`: `5432` , __Optional__ If the postgresql cluster you want to replicate is not served on the default 5432 postgresql port, you can define it . This is a host related variable. Use it in host variable!
+- `postgresql_replication_password`: string , __Optional__ If the replication is password protected you can set the password for it. The `postgresql_network_password_mode` variable should be set to `md5` or `scram-sha-256`. It is ONLY tested with these! This is a host related variable. Use it in host variable!
+
 pg_rman
 ----------------
 _https://github.com/ossc-db/pg_rman_
@@ -454,6 +465,19 @@ postgresql_pgbackrest_conf:
 
 ##Release notes
 _____
+
+2.2.0:
+- create schema support
+- FQCN nameing fix
+- Debian repo url fix
+- more molecule platforms 
+- other small fixes
+- replication with password authentication, 'md5' and 'scram-sha-256'
+- run cluster on custom port
+- replication from custom port
+- replicate to custom port
+- create cluster with custom name, beside the default
+
 2.1.1:
 - - pgbackrest default + cronjobs moved to optional 
 

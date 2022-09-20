@@ -1,13 +1,19 @@
 # postgres/tasks/pgaudit.yml
 ---
+- name: Install pg_audit for Debian
+  ansible.builtin.package:
+    name:
+      - "postgresql-{{ postgresql_version }}-pgaudit"
+  when: ansible_distribution == "Debian"
+
 - name: Install pg_audit for Ubuntu
-  package:
+  ansible.builtin.package:
     name:
       - "postgresql-{{ postgresql_version }}-pgaudit"
   when: ansible_distribution == "Ubuntu"
 
 - name: Install pg_audit for Redhat
-  package:
+  ansible.builtin.package:
     name:
       #- "pgauditlogtofile-{{ postgresql_version | replace('.', '') }}"
       - "{{ postgresql_pgaudit_redhat_package }}"
@@ -15,7 +21,7 @@
 
 
 - name: Set Postgres config options pg_audit
-  template:
+  ansible.builtin.template:
     src: ansible_pg_audit.conf.j2
     dest: "{{ postgresql_conf_dir }}/conf.d/28ansible_pg_audit.conf"
     owner: "{{ postgresql_user_name }}"

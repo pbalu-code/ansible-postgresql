@@ -1,4 +1,4 @@
-# postgres/vars/ubuntu.yml
+# postgres/vars/armv7l.yml 32 bit arm
 ---
 postgresql_cluster_name_default: main
 postgresql_pgdata_default: /var/lib/postgresql/{{ postgresql_version }}/{{ postgresql_cluster_name }}
@@ -9,8 +9,6 @@ postgresql_home: /var/lib/postgresql
 
 
 postgresql_langpacks:
-  - language-pack-hu
-  - language-pack-eu
+  # - language-pack-hu
+  # - language-pack-eu
   - locales
-
-postgresql_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_lsb.codename }}-pgdg main"

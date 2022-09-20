@@ -3,21 +3,37 @@
 - name: Ensure database is created
   become: true
   become_user: postgres
-  postgresql_db:
+  community.postgresql.postgresql_db:
     name: "{{ item.name }}"
     encoding: '{{ item.encoding }}'
     lc_collate: '{{ item.lc_collate | default(item.locale) }}'
     lc_ctype: '{{ item.lc_ctype | default(item.locale) }}'
     template: "{{ item.template | default('template0') }}"
     tablespace: "{{ item.tablespace | default(omit) }}"
+    port: "{{ postgresql_port }}"
     state: present
   loop: "{{ postgresql_dbs }}"
   when:
     - postgresql_dbs is defined
     - not postgresql_init_replication
   no_log: true
-  notify: Reload PostgreSQL
+  #notify: Reload PostgreSQL
+
+- name: Create schema
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    name: "{{ item.schema }}"
+    database: "{{ item.name }}"
+    port: "{{ postgresql_port }}"
+    state: present
+  loop: "{{ postgresql_dbs }}"
+  when:
+    - postgresql_dbs is defined
+    - not postgresql_init_replication
+    - item.schema is defined
+  no_log: true
 
 - name: Force all notified handlers to run at this point, not waiting for normal sync points
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
 #  ignore_errors: "{{ postgresql_init_replication | default(omit) }}"
