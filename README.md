@@ -23,12 +23,25 @@ Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22,
 ###Replication tested:  
 **Postgresql: 12, 13, 14**
 
-### No pg_repack for centos for version 14 of postgresql 
+###Replication tested with password authentication:
+__Raspbian11__:
+**Postgresql: 13**
+__Ubuntu18-20__:
+**Postgres: 14**
+__Centos8__:
+**Postgres: 14**
+__Debian10-11__:
+**Postgres: 14**
+### No pg_repack for centos for version 14 of postgresql
 
 ###Test enivonment:
 **molecule:**
 - vagrant: (Centos7, Ubuntu18-22, Debian10-11)
 - docker: Centos7, Ubuntu18-22, Debian10
+
+###Tested Ansible:
+- 2.10.7
+- 3.4.0
 
 Extra features
 --------------
@@ -216,10 +229,12 @@ Role Variables
 
 - `postgresql_dbs`:  Create databases with these parameters.
     - `name`: database name
-    - `schema`: schema name (optional)
+    - `schema`: (optional array)
+         - 'schema_name' 
     - `password`: (optional) User's password to connect the database
     - `user`: User to connect the current database
     - `priv`: Slash-separated PostgreSQL privileges string: priv1/priv2, where privileges can be defined for database ( allowed options - 'CREATE', 'CONNECT', 'TEMPORARY', 'TEMP', 'ALL'. For example CONNECT ) or for table ( allowed options - 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'ALL'. For example table:SELECT ). Mixed example of this string: CONNECT/CREATE/table1:SELECT/table2:INSERT.
+    - `grants`: Grants PostgreSQL privileges to db / schemas. Default: 'ALL' (Standard Postgresql grants)
     - `ssl_mode`: __Optional__ Determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the server.
 See https://www.postgresql.org/docs/current/static/libpq-ssl.html for more information on the modes.
 Default of prefer matches libpq default.  
@@ -307,6 +322,11 @@ Variables:
 
 The role does install pgaudit packages.
 
+Tags:
+---------------
+- db (Create db and schemas)
+- pguser (postgresql users management)
+
 Example Playbook
 ----------------
 
@@ -328,7 +348,7 @@ Use the PostgreSQL 13 packages and set some `postgresql.conf` options and `pg_hb
 - hosts: dbservers
   remote_user: root
   vars:
-    postgresql_version: 13
+    postgresql_version: 14
     postgresql_use_ssl: true
     postgresql_ssl_key: postgres.key
     postgresql_ssl_crt: postgres.crt
@@ -385,6 +405,8 @@ postgresql_dbs:
   - name: database1
     password: password123
     user: pguser
+    schema:
+      - uat
     priv: ALL
     ssl_mode: prefer
     encoding: UTF-8
@@ -462,9 +484,48 @@ postgresql_pgbackrest_conf:
       pg1-port: !!str 5432
 
 ```
+replication
+```yaml
+- hosts: primary
+  remote_user: root
+  vars:
+    postgresql_network_password_mode: 'trust'
+    postgresql_pg_hba_conf:
+      - "host replication replicator **standby_ip_address**/32 {{ postgresql_network_password_mode }}"
+    postgresql_conf:
+      - listen_addresses: "'*'"
+
+    postgresql_global_users:
+      - user: 'replicator'
+        role_attr_flags: "NOSUPERUSER,NOCREATEROLE,NOCREATEDB,INHERIT,LOGIN,REPLICATION"
+  roles:
+    - postgresql
+
+
+- hosts: standby
+  remote_user: root
+  vars:
+    postgresql_network_password_mode: 'trust'
+    postgresql_replication_master: **primary_ip_address**
+    postgresql_standby_slot_name: 'standbydb'
+
+    postgresql_pg_hba_conf:
+      - "host replication replicator {{ postgresql_replication_master }}/32 {{ postgresql_network_password_mode }}"
+
+    postgresql_conf:
+      - listen_addresses: "'*'"
+      - primary_slot_name: "'{{ postgresql_standby_slot_name }}'"
+  roles:
+    - postgresql
+
+```
 
 ##Release notes
 _____
+2.3.0
+ - Support multiple schema (array)
+ - fix grants for schemas
+ - new tags: db, pguser
 
 2.2.0:
 - create schema support
@@ -479,7 +540,7 @@ _____
 - create cluster with custom name, beside the default
 
 2.1.1:
-- - pgbackrest default + cronjobs moved to optional 
+- pgbackrest default cronjobs moved to optional  
 
 2.1.0:  
 - pgbackrest integration

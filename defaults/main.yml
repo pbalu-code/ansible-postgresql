@@ -39,7 +39,7 @@ postgresql_pg_audit_postgres_conf:
 # For ubuntu it is automatic
 
 postgresql_pg_hba_conf:
-      - "host all all 10.0.0.0/8 {{ postgresql_network_password_mode }}"
+  - "host all all 10.0.0.0/8 {{ postgresql_network_password_mode }}"
 
 postgresql_network_password_mode: "md5"
 # METHOD can be "trust", "reject", "md5", "password", "scram-sha-256",
@@ -77,13 +77,13 @@ postgresql_ssl_organization_name: "The Big One Organisation Ltd."
 postgresql_ssl_organization_unit_name: "IT - Who else"
 postgresql_ssl_honorcipherorder: "on"
 
-#postgresql_dbs:
-#  - name: database1
-#    password: password123
-#    user: pguser
-#    encoding: UTF-8
-#    locale: en_US.UTF-8
-#    template: 'template0'
+postgresql_dbs:
+  - name: database1
+    password: password123
+    user: pguser
+    encoding: UTF-8
+    locale: en_US.UTF-8
+    template: 'template0'
 
 postgresql_default_lang: en_US.UTF-8
 postgresql_locales:

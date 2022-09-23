@@ -1,0 +1,23 @@
+---
+- name: Ensure user has proper rights to the schema
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_privs:
+    db: "{{ dbschemas.name }}"
+    role: "{{ dbschemas.user }}"
+    privs: "{{ dbschemas.grants | default('ALL', true) }}"
+    port: "{{ postgresql_port }}"
+    ssl_mode: "{{ dbschemas.ssl_mode | default(omit) }}"
+    obj: "{{ item }}"
+    type: schema
+    state: present
+  with_items: "{{ dbschemas.schema }}"
+  loop_control:
+    label: "{{ item }}"
+  no_log: false
+  when:
+    - dbschemas.schema is defined
+    - not postgresql_init_replication
+  notify: Reload PostgreSQL
+  tags:
+    - pguser

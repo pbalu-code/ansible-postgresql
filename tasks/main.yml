@@ -8,6 +8,9 @@
     - "{{ ansible_os_family }}-{{ ansible_distribution_major_version }}.yml"
     - "{{ ansible_distribution }}.yml"
     - "{{ ansible_os_family }}.yml"
+  tags:
+    - pguser
+    - db
 
 - name: Install language files
   ansible.builtin.package:
@@ -112,9 +115,13 @@
 
 - name: Include database managers's tasks
   ansible.builtin.include_tasks: databases.yml
+  tags:
+    - db
 
 - name: Include user manager's tasks
   ansible.builtin.include_tasks: users.yml
+  tags:
+    - pguser
 
 - name: Include pgrman's tasks
   ansible.builtin.include_tasks: pgrman.yml

@@ -1,0 +1,19 @@
+---
+- name: Create schema
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_schema:
+    name: "{{ item }}"
+    database: "{{ db.name }}"
+    port: "{{ postgresql_port }}"
+    state: present
+  with_items: "{{ db.schema }}"
+  when:
+    - postgresql_dbs is defined
+    - not postgresql_init_replication
+    - db.schema is defined
+  no_log: true
+  loop_control:
+    label: "{{ item }}"
+  tags:
+    - db

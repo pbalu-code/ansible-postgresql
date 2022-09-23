@@ -7,7 +7,7 @@
     db: "{{ item.name }}"
     name: "{{ item.user }}"
     password: "{{ item.password | default(omit) }}"
-    priv: "{{ item.priv | default('ALL') }}"
+    priv: "{{ item.priv | default('ALL', true) }}"
     port: "{{ postgresql_port }}"
     ssl_mode: "{{ item.ssl_mode | default(omit) }}"
     state: present
@@ -20,7 +20,8 @@
     - postgresql_dbs is defined
     - not postgresql_init_replication
   notify: Reload PostgreSQL
-
+  tags:
+    - pguser
 
 - name: Ensure standard users has not got unnecessary privileges
   become: true
@@ -36,6 +37,58 @@
     - postgresql_dbs is defined
     - not postgresql_init_replication
   notify: Reload PostgreSQL
+  tags:
+    - pguser
+
+- name: Ensure user has got access to the database
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    db: "{{ item.name }}"
+    name: "{{ item.user }}"
+    password: "{{ item.password | default(omit) }}"
+    priv: "{{ item.priv | default('ALL', true) }}"
+    port: "{{ postgresql_port }}"
+    ssl_mode: "{{ item.ssl_mode | default(omit) }}"
+    state: present
+  loop: "{{ postgresql_dbs }}"
+  environment:
+    PGOPTIONS: "{{ (postgresql_network_password_mode == 'scram-sha-256') \
+    | ternary('-c password_encryption=scram-sha-256', '') }}"
+  no_log: false
+  when:
+    - postgresql_dbs is defined
+    - not postgresql_init_replication
+  notify: Reload PostgreSQL
+  tags:
+    - pguser
+
+- name: Ensure user has proper rights to the database
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_privs:
+    db: "{{ item.name }}"
+    role: "{{ item.user }}"
+    privs: "{{ item.grants | default('ALL', true) }}"
+    port: "{{ postgresql_port }}"
+    ssl_mode: "{{ item.ssl_mode | default(omit) }}"
+    state: present
+    type: database
+  loop: "{{ postgresql_dbs }}"
+  no_log: false
+  when:
+    - postgresql_dbs is defined
+    - not postgresql_init_replication
+  notify: Reload PostgreSQL
+  tags:
+    - pguser
+
+- name: Include schema grants managers's tasks
+  ansible.builtin.include_tasks: schema_grants.yml
+  loop: "{{ postgresql_dbs }}"
+  loop_control:
+    loop_var: dbschemas
+
 
 - name: Create global users
   become: true
@@ -56,6 +109,11 @@
     - postgresql_global_users is defined
     - not postgresql_init_replication
   notify: Reload PostgreSQL
+  tags:
+    - pguser
+
 
 - name: Force all notified handlers to run at this point, not waiting for normal sync points
   ansible.builtin.meta: flush_handlers
+  tags:
+    - pguser
