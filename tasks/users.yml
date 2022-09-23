@@ -14,7 +14,7 @@
   loop: "{{ postgresql_dbs }}"
   environment:
     PGOPTIONS: "{{ (postgresql_network_password_mode == 'scram-sha-256') \
-    | ternary('-c password_encryption=scram-sha-256', omit) }}"
+    | ternary('-c password_encryption=scram-sha-256', '') }}"
   no_log: true
   when:
     - postgresql_dbs is defined

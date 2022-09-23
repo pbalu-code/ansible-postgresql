@@ -158,7 +158,7 @@
   become_user: "{{ postgresql_user_name }}"
   when: not postgresql_pg_rman_init.stat.exists
 
-- name: Pg_rman ini parameters
+- name: PG_rman ini parameters
   community.general.ini_file:
     path: "{{ postgresql_home }}/{{ postgresql_version }}/backups/pg_rman.ini"
     section:

@@ -117,18 +117,18 @@ postgresql_pgbackrest_conf:
       pg1-path: "{{ postgresql_pgdata_default }}"
       pg1-port: !!str "{{ postgresql_port }}"
 
-postgresql_cronjobs:
-  pgbackrest_weekly:
-    job: pgbackrest --type=full --stanza=demo backup
-    minute: !!str 0
-    hour: !!str 2
-    month: "*"
-    weekday: !!str 0
-    user: postgres
-  pgbackrest_daily:
-    job: pgbackrest --type=diff --stanza=demo backup
-    minute: !!str 0
-    hour: !!str 2
-    month: "*"
-    weekday: "1-6"
-    user: postgres
+#postgresql_cronjobs:
+#  pgbackrest_weekly:
+#    job: pgbackrest --type=full --stanza=demo backup
+#    minute: !!str 0
+#    hour: !!str 2
+#    month: "*"
+#    weekday: !!str 0
+#    user: postgres
+#  pgbackrest_daily:
+#    job: pgbackrest --type=diff --stanza=demo backup
+#    minute: !!str 0
+#    hour: !!str 2
+#    month: "*"
+#    weekday: "1-6"
+#    user: postgres
