@@ -254,7 +254,7 @@ Choices:
 If you want to move the database back to the default tablespace, explicitly set this to pg_default. 
 
 - `postgresql_global_users`: __Optional__ Create non database specific users with special rights  
-    - `name`: User's login name
+    - `user`: User's login name
     - `password`: (optional) User's password  
     - `role_attr_flags`: PostgreSQL user attributes string in the format: CREATEDB,CREATEROLE,SUPERUSER.  Choices:  
          - [NO]SUPERUSER  
