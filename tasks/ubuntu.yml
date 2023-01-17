@@ -2,6 +2,7 @@
 ---
 - name: Install prerequirements
   ansible.builtin.apt:
+    update_cache: true
     name:
     - add-apt-key
     - ca-certificates
