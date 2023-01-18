@@ -1,4 +1,4 @@
-ansible-postgresql v2.2.0
+ansible-postgresql 2.3.1
 ===========
 Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22, Debian 10-11
 
@@ -522,6 +522,9 @@ replication
 
 ##Release notes
 _____
+2.3.1
+- Apt-cache update for debian based OS.
+
 2.3.0
  - Support multiple schema (array)
  - fix grants for schemas
