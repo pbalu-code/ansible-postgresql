@@ -1,10 +1,12 @@
-ansible-postgresql 2.3.1
-===========
+# ansible-postgresql 2.3.2
+
 Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22, Debian 10-11
 
-###Tested:
+## Tested:
 - Centos7
 - Centos8
+- Red Hat 8.7
+- Red Hat 8.8
 - Ubuntu18
 - Ubuntu20
 - Ubuntu22
@@ -12,7 +14,7 @@ Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22,
 - Debian11
 
 
-###PostgreSQL:
+## PostgreSQL:
 - 9.6
 - 10
 - 11
@@ -20,10 +22,10 @@ Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22,
 - 13
 - 14
 
-###Replication tested:  
+## Replication tested:  
 **Postgresql: 12, 13, 14**
 
-###Replication tested with password authentication:
+## Replication tested with password authentication:
 __Raspbian11__:
 **Postgresql: 13**
 __Ubuntu18-20__:
@@ -32,19 +34,22 @@ __Centos8__:
 **Postgres: 14**
 __Debian10-11__:
 **Postgres: 14**
-### No pg_repack for centos for version 14 of postgresql
 
-###Test enivonment:
+## Limited pg_repack support
+* No pg_repack for centos for version 14 of postgresql
+* No pg_repack support for Red Hat 8.8
+
+## Test enivonment:
 **molecule:**
 - vagrant: (Centos7, Ubuntu18-22, Debian10-11)
 - docker: Centos7, Ubuntu18-22, Debian10
 
-###Tested Ansible:
+### Tested Ansible:
 - 2.10.7
 - 3.4.0
 
-Extra features
---------------
+
+## Extra features
  - ssl
  - postgis*  (Debina 10 broken)
  - pg_rman
@@ -53,8 +58,7 @@ Extra features
  - pgbackrest
 
 
-About
---------
+## About
 An [Ansible][ansible] role for installing and managing [PostgreSQL][postgresql] servers. This role works with both
 Debian and RedHat based systems.
 
@@ -71,15 +75,14 @@ packages][pgdg_apt].
 server for those configuration changes that can be updated with only a reload because reloading is a non-intrusive
 operation, but options that require a full restart will not cause the server to restart.
 
-Requirements
-------------
+## Requirements
 
 - This role requires Ansible 2.9+
 
 - The language settings should be correct, LANG, LC_* variables should be defined!!
 
-Role tags
---------------
+## Role tags
+
 - genlocales - Generate locales ( Ubuntu only )
 - pgbackrest
 - langsources
@@ -88,10 +91,9 @@ Role tags
 - cron
 
 
-Role Variables
---------------
+## Role Variables
 
-### All variables are optional but... ###
+### All variables are optional but...
 
 - `postgresql_user_name`: System username to be used for PostgreSQL (default: `postgres`).
 
@@ -311,9 +313,8 @@ For example: `/var/lib/pgsql/12/backups` Under Centos/RedHat
 - `postgresql_pgbackrest_stanza_names`:`[list]` default: `- demo` Stanza names to be check and create.
 - `postgresql_install_pgbackrest`: `boolean` default: `true` Install pgbackrest or not. 
 
+## pg_audit
 
-- pg_audit
-----------------
 _https://www.pgaudit.org/_
 
 Variables:
@@ -322,13 +323,12 @@ Variables:
 
 The role does install pgaudit packages.
 
-Tags:
----------------
+## Tags:
+
 - db (Create db and schemas)
 - pguser (postgresql users management)
 
-Example Playbook
-----------------
+## Example Playbook
 
 Standard install: Default `postgresql.conf`, `pg_hba.conf` and default version for the OS:
 
@@ -384,7 +384,7 @@ Use the PostgreSQL 13 packages and set some `postgresql.conf` options and `pg_hb
     - postgresql
 ```
 
-###pg_hba.conf
+### pg_hba.conf
 https://www.postgresql.org/docs/13/auth-pg-hba-conf.html 
 
 local  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    database &nbsp;&nbsp;&nbsp;&nbsp; user &nbsp;&nbsp;&nbsp;&nbsp; auth-method &nbsp;&nbsp;&nbsp;&nbsp; [auth-options]  
@@ -485,6 +485,7 @@ postgresql_pgbackrest_conf:
 
 ```
 replication
+
 ```yaml
 - hosts: primary
   remote_user: root
@@ -520,8 +521,11 @@ replication
 
 ```
 
-##Release notes
-_____
+## Release notes
+
+2.3.2
+- Skip pg_repack for Red Hat 8.8 (not possible anymore)
+
 2.3.1
 - Apt-cache update for debian based OS.
 
