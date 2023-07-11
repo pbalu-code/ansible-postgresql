@@ -1,4 +1,4 @@
-# ansible-postgresql 2.3.1
+# ansible-postgresql 2.3.2
 
 Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22, Debian 10-11
 
@@ -523,7 +523,7 @@ replication
 
 ## Release notes
 
-Upcoming
+2.3.2
 - Skip pg_repack for Red Hat 8.8 (not possible anymore)
 
 2.3.1
