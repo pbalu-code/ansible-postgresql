@@ -100,21 +100,28 @@
   when: postgresql_version is version('14', '<') and ansible_distribution_version is version('8.8', '<')
 
 # posgres_db modul - Failed to import the required Python library (psycopg2)
+- name: Install python module for Postgres Redhat 9+
+  ansible.builtin.package:
+    name:
+      - "{% if ansible_python_version is version('3', '<') %}python2-psycopg2{% else \
+          %}python3-psycopg2{% endif %}"
+    state: present
+  when: ansible_distribution_major_version is version('8', '>=')
+
+# posgres_db modul - Failed to import the required Python library (psycopg2)
 - name: Install python module for Postgres Redhat 8+
   ansible.builtin.package:
     name:
-      - "{% if ansible_python_version is version('3', '<') %}python2-psycopg2{% elif \
-          ansible_python_version is version('3.8', '<') %}python3-psycopg2{% else \
-          %}python38-psycopg2{% endif %}"
+      - "{% if ansible_python_version is version('3', '<') %}python2-psycopg2{% else \
+          %}python3-psycopg2{% endif %}"
     state: present
   when: ansible_distribution_major_version is version('8', '>=')
 
 - name: Install python module for Postgres Redhat 7
   ansible.builtin.package:
     name:
-      - "{% if ansible_python_version is version('3', '<') %}python-psycopg2{% elif \
-          ansible_python_version is version('3.8', '<') %}python3-psycopg2{% else \
-          %}python38-psycopg2{% endif %}"
+      - "{% if ansible_python_version is version('3', '<') %}python-psycopg2{% else \
+          %}python3-psycopg2{% endif %}"
     state: present
   when: ansible_distribution_major_version is version('8', '<')
 
