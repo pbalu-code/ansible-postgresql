@@ -1,12 +1,13 @@
 # ansible-postgresql 2.3.2
 
-Ansible role to install postgresql server on Centos/Redhat 7 - 8 , Ubuntu 18-22, Debian 10-11
+Ansible role to install postgresql server on Centos/Redhat 7 - 9 , Ubuntu 18-22, Debian 10-11
 
 ## Tested:
 - Centos7
 - Centos8
 - Red Hat 8.7
 - Red Hat 8.8
+- Red Hat 9.0
 - Ubuntu18
 - Ubuntu20
 - Ubuntu22
@@ -522,6 +523,9 @@ replication
 ```
 
 ## Release notes
+
+upcoming
+- Use `python3-psycopg2` / `python3-cryptography` for all Red Hat distributions with Python 3, i.e. not `python38-psycopg2` / `python38-cryptography` for Python > 3.8 anymore.
 
 2.3.2
 - Skip pg_repack for Red Hat 8.8 (not possible anymore)
