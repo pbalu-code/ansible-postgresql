@@ -51,12 +51,10 @@
 #    - ansible_os_family == 'RedHat'
 #    - ansible_distribution_major_version is version('8', '<')
 
-- name: Insall cryptography modul for ansible (Python 2.7-3.7-3.8)
+- name: Install cryptography modul for ansible (Python 2.7-3.x)
   ansible.builtin.package:
-    name: "{% if ansible_python_version is version('3', '<') %}python2-cryptography{% elif \
-    ansible_python_version is version('3.8', '<') %}python3-cryptography{% elif \
-    ansible_os_family == 'RedHat' and ansible_python_version is version('3.8', '>=') \
-    %}python38-cryptography{% else %}python3-cryptography{% endif %}"
+    name: "{% if ansible_python_version is version('3', '<') %}python2-cryptography{% else \
+    %}python3-cryptography{% endif %}"
     state: present
   when:
     - not external_crt.stat.exists or ( postgresql_ssl_dh is defined )
